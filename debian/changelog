@@ -1,3 +1,9 @@
+eta-touchdrv (0.1.8) stable; urgency=medium
+
+  * Fix for phase 1 ssd edition
+
+ -- Cihangir Aktürk <cihangir.akturk@pardus.org.tr>  Mon, 30 Dec 2019 19:05:50 +0300
+
 eta-touchdrv (0.1.7) stable; urgency=medium
 
   * Add libx11-6 to build-dependency
