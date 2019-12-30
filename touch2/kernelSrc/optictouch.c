@@ -37,7 +37,7 @@
 #define	GET_DEVICE_BARCODE	0x17
 #define	GET_DEVICE_BUS	0x1C
 
-#define COMMAND_RETRY_COUNT  10
+#define COMMAND_RETRY_COUNT  8
 #define PRIMARYID 	0x00
 #define SECONDARYID 	0x01
 
@@ -331,7 +331,7 @@ unsigned char optictouch_send_command(struct usb_device * udev,
 					(char *)in_data,
 					length, 
 					1000);
-		msleep(200);
+		msleep(50);
 
 		ret = usb_control_msg(udev, 
 					usb_rcvctrlpipe(udev, 0), 
@@ -1323,8 +1323,7 @@ static int optictouch_probe(struct usb_interface * intf, const struct usb_device
 	}
 
 	usb_set_intfdata(intf, optictouch);
-	
-	msleep(8000);
+	msleep(300);
 
 	optictouchdev_context->productid = udev->descriptor.idProduct;
 	if(optictouchdev_context->productid == 0x0c20)
