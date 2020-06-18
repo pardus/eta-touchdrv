@@ -3,9 +3,9 @@
 set -e
 
 if lsusb | grep -qE "(6615:0084|6615:0085|6615:0086|6615:0087|6615:0088|6615:0c20)" ; then
-    modprobe optictouch
-    /usr/bin/opticServer
+    modprobe OpticalDrv
+    /usr/bin/OpticalService
 elif lsusb | grep -qE "(2621:2201|2621:4501)" ; then
-    modprobe OtdTouchDriver
+    modprobe OtdDrv
     /usr/bin/OtdTouchServer
 fi
