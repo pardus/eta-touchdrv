@@ -1,3 +1,10 @@
+eta-touchdrv (0.2.0) stable; urgency=medium
+
+  * Update driver for Etap 19
+  * Update debian folder
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Thu, 18 Jun 2020 12:09:10 +0300
+
 eta-touchdrv (0.1.8) stable; urgency=medium
 
   * Fix for phase 1 ssd edition
