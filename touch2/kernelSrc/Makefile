@@ -16,7 +16,7 @@ else
 	KERNELDIR := /lib/modules/$(shell uname -r)/build
 	PWD := $(shell pwd)
 all:
-	$(MAKE) -C $(KERNELDIR) SUBDIRS=$(PWD) modules
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 new rebuild:	clean all
 
