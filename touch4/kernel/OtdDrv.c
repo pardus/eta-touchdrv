@@ -16,12 +16,8 @@
 #define DRIVER_NAME "Optical touch device"
 #define DEVICE_NAME "Otd"
 
-#define err(format, arg...)\
-printk(KERN_ERR KBUILD_MODNAME ": "
-  format "\n", # #arg)
-#define info(format, arg...)\
-printk(KERN_INFO KBUILD_MODNAME ": "
-  format "\n", # #arg)
+#define err(format, arg...) printk(KERN_ERR KBUILD_MODNAME ": "  format "\n", ##arg)
+#define info(format, arg...) printk(KERN_INFO KBUILD_MODNAME ": "  format "\n", ##arg)
 
 typedef struct _device_context_pool {
   char name[128];
