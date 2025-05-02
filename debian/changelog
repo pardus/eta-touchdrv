@@ -1,3 +1,11 @@
+eta-touchdrv (0.3.2) stable; urgency=medium
+
+  [ Ali Riza KESKIN ]
+  * add aarch64 service blob
+  * Dont exit service for non vestel boards. Because it continuously restarts.
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Fri, 02 May 2025 15:09:58 +0300
+
 eta-touchdrv (0.3.1) stable; urgency=medium
 
   [ Ali Riza KESKIN ]
