@@ -3,7 +3,7 @@
 VERSION=$(shell dpkg-parsechangelog --show-field=Version|rev|cut -d- -f2-|rev)
 
 %:
-	dh $@ --with dkms --with systemd
+	dh $@ --with dkms
 
 override_dh_install:
 	dh_install touch2/kernelSrc/Makefile touch2/kernelSrc/OpticalDrv.c touch2/kernelSrc/OpticalDrv.h usr/src/eta-touchdrv-$(VERSION)/touch2/

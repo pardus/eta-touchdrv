@@ -10,6 +10,7 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 #include <linux/input/mt.h>
+#include <linux/version.h>
 
 #include "OtdDrv.h"
 
@@ -21,6 +22,10 @@
     printk(KERN_INFO KBUILD_MODNAME ": " format "\n", ##arg)
 
 #define OTD_MINOR_BASE    0
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
+#define strlcpy strscpy
+#endif
 
 typedef struct _device_context_pool
 {

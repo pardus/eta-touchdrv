@@ -10,10 +10,15 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 #include <linux/input/mt.h>
+#include <linux/version.h>
 
 #include "OpticalDrv.h"
 
 #define DRIVER_NAME "IRTOUCH optical"
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
+#define strlcpy strscpy
+#endif
 
 #define err(format, arg...) printk(KERN_ERR KBUILD_MODNAME ": "  format "\n", ##arg)
 #define info(format, arg...) printk(KERN_INFO KBUILD_MODNAME ": " format "\n", ##arg)
