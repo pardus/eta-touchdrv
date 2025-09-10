@@ -14,6 +14,8 @@ override_dh_install:
 	chmod 744 debian/eta-touchdrv/usr/bin/OtdTouchServer.$(shell uname -m) debian/eta-touchdrv/usr/bin/OtdCalibrationTool
 	dh_install touchdrv_install usr/bin
 	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_install
+	dh_install touchdrv_restart usr/bin
+	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_restart
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)

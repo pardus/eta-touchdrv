@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+if systemctl is-failed --quiet eta-touchdrv.service; then
+    systemctl restart eta-touchdrv.service || true
+fi
