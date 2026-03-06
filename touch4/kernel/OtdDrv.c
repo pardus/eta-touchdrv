@@ -10,7 +10,6 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 #include <linux/input/mt.h>
-#include <linux/version.h>
 
 #include "OtdDrv.h"
 
@@ -22,10 +21,6 @@
     printk(KERN_INFO KBUILD_MODNAME ": " format "\n", ##arg)
 
 #define OTD_MINOR_BASE    0
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
-#define strlcpy strscpy
-#endif
 
 typedef struct _device_context_pool
 {
@@ -253,11 +248,19 @@ static long sync_multitouch(device_context *otd, unsigned short length, void con
     }
     for (i = 0; i < sizeof(value.touchPoint) / sizeof(value.touchPoint[0]); i++)
     {
+        /* Ensure we always select the slot so we can report releases even when
+         * the incoming report marks the slot as invalid (IsValid == 0).
+         * Some upstream code may mark a point invalid instead of explicitly
+         * sending an "Up" event; treating invalid as release prevents stuck
+         * touches in the input layer. */
+        input_mt_slot(otd->input_dev, i);
         if ((value.touchPoint[i].state & OtdReportTouchPointStateFlag_IsValid) == 0)
         {
+            /* Report slot as released */
+            input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, false);
             continue;
         }
-        input_mt_slot(otd->input_dev, i);
+
         if ((value.touchPoint[i].state & OtdReportTouchPointStateFlag_IsTouched) != 0)
         {
             input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, true);
@@ -456,7 +459,7 @@ static void input_dev_init(struct input_dev* obj, device_context_pool* pool, str
 {
     if (usb_device->manufacturer != NULL)
     {
-        strlcpy(pool->name, usb_device->manufacturer, sizeof(pool->name));
+        strscpy(pool->name, usb_device->manufacturer, sizeof(pool->name));
     }
     else
     {
@@ -483,7 +486,7 @@ static void input_dev_init(struct input_dev* obj, device_context_pool* pool, str
     usb_to_input_id(usb_device, &obj->id);
     obj->dev.parent = parent;
 
-    //没看出实际用途
+    //没锟斤拷锟斤拷实锟斤拷锟斤拷途
     //input_set_drvdata(obj, otd);
 
     obj->open = otd_open_device;
@@ -571,7 +574,7 @@ static int otd_probe(struct usb_interface * intf, const struct usb_device_id *id
                             } while (false);
                             usb_set_intfdata(intf, NULL);
                         } while (false);
-                        //原来没有调用input_unregister_device
+                        //原锟斤拷没锟叫碉拷锟斤拷input_unregister_device
                         input_unregister_device(otd->input_dev);
                     } while (false);
                     usb_free_urb(otd->interrupt_urb);
