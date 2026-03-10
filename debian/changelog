@@ -1,3 +1,9 @@
+eta-touchdrv (0.4.0) stable; urgency=medium
+
+  * Update touch4 binary
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Tue, 10 Mar 2026 12:00:44 +0300
+
 eta-touchdrv (0.3.6~tbt1) stable; urgency=medium
 
   * Update kernel sources
