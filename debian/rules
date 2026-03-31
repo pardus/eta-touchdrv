@@ -12,10 +12,8 @@ override_dh_install:
 	dh_install touch4/kernel/Makefile touch4/kernel/OtdDrv.c touch4/kernel/OtdDrv.h usr/src/eta-touchdrv-$(VERSION)/touch4/
 	dh_install touch4/otdServer/OtdTouchServer.$(shell uname -m) touch4/calibration/OtdCalibrationTool usr/bin/
 	chmod 744 debian/eta-touchdrv/usr/bin/OtdTouchServer.$(shell uname -m) debian/eta-touchdrv/usr/bin/OtdCalibrationTool
-	dh_install touchdrv_install usr/bin
-	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_install
-	dh_install touchdrv_restart usr/bin
-	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_restart
+	dh_install touchdrv_launcher usr/bin
+	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_launcher
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)

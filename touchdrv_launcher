@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+TYPE=$1
+
+if [ "$TYPE" = "optical" ]; then
+    modprobe OpticalDrv || true
+    exec /usr/bin/OpticalService
+elif [ "$TYPE" = "otd" ]; then
+    modprobe OtdDrv || true
+    exec /usr/bin/OtdTouchServer.$(uname -m)
+else
+    echo "Unknown TYPE: $TYPE"
+    exit 1
+fi
