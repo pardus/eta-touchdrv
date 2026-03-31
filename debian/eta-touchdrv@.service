@@ -5,6 +5,6 @@ After=lightdm.service
 [Service]
 Type=simple
 ExecStart=/usr/bin/touchdrv_launcher %i
-Restart=always
+Restart=on-failure
 RestartSec=2
 StartLimitIntervalSec=0

@@ -10,6 +10,6 @@ elif [ "$TYPE" = "otd" ]; then
     modprobe OtdDrv || true
     exec /usr/bin/OtdTouchServer.$(uname -m)
 else
-    echo "Unknown TYPE: $TYPE"
-    exit 1
+    echo "Unknown TYPE: $TYPE, exiting cleanly to prevent loop"
+    exit 0
 fi
