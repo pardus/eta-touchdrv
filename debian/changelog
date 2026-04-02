@@ -1,3 +1,14 @@
+eta-touchdrv (0.5.0) stable; urgency=medium
+
+  [ Yusuf Düzgün ]
+  * refactor - systemd service, udev rules and scripts
+  * update service restart policy and launcher exit code
+
+  [ Fatih Altun ]
+  * Update touch4 binary from otd:c5290aa3b2
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Thu, 02 Apr 2026 06:58:10 +0000
+
 eta-touchdrv (0.4.0) stable; urgency=medium
 
   * Update touch4 binary
