@@ -10,6 +10,7 @@
 #include <linux/input/mt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/string.h>
 #include <linux/usb.h>
 #include <linux/usb/input.h>
@@ -38,6 +39,9 @@ typedef struct _device_context {
     struct urb* interrupt_urb;
 
     spinlock_t lock;
+    struct mutex io_lock;
+    bool disconnected;
+    bool opened;
 
     unsigned char* ongoing_buffer;
     dma_addr_t ongoing_buffer_dma;
@@ -308,11 +312,21 @@ static int optical_open(struct inode* inode, struct file* filp) {
         err("%s: device context is NULL.", __func__);
         return -ENODEV;
     }
-    if (device->file_private_data != NULL) {
-        return -EFAULT;
+
+    mutex_lock(&device->io_lock);
+    if (device->disconnected) {
+        mutex_unlock(&device->io_lock);
+        return -ENODEV;
     }
+    if (device->opened) {
+        mutex_unlock(&device->io_lock);
+        return -EBUSY;
+    }
+
+    device->opened = true;
     device->file_private_data = &filp->private_data;
     filp->private_data = device;
+    mutex_unlock(&device->io_lock);
 
     return 0;
 }
@@ -322,7 +336,10 @@ static int optical_release(struct inode* inode, struct file* filp) {
 
     device = filp->private_data;
     if (device != NULL) {
+        mutex_lock(&device->io_lock);
+        device->opened = false;
         device->file_private_data = NULL;
+        mutex_unlock(&device->io_lock);
     }
     filp->private_data = NULL;
 
@@ -467,6 +484,9 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
             }
             do {
                 spin_lock_init(&device->lock);
+                mutex_init(&device->io_lock);
+                device->disconnected = false;
+                device->opened = false;
                 device->ongoing_buffer =
                     usb_alloc_coherent(device->usb_device, sizeof(device->buffer), GFP_ATOMIC,
                                        &device->ongoing_buffer_dma);
@@ -533,6 +553,15 @@ static void optical_disconnect(struct usb_interface* intf) {
     minor = intf->minor;
     device = usb_get_intfdata(intf);
 
+    mutex_lock(&device->io_lock);
+    device->disconnected = true;
+    if (device->file_private_data != NULL) {
+        (*device->file_private_data) = NULL;
+    }
+    device->file_private_data = NULL;
+    device->opened = false;
+    mutex_unlock(&device->io_lock);
+
     usb_deregister_dev(intf, &optical_class);
     usb_set_intfdata(intf, NULL);
     input_unregister_device(device->input_dev);
@@ -540,10 +569,6 @@ static void optical_disconnect(struct usb_interface* intf) {
     usb_free_urb(device->interrupt_urb);
     usb_free_coherent(device->usb_device, sizeof(device->buffer), device->ongoing_buffer,
                       device->ongoing_buffer_dma);
-    if (device->file_private_data != NULL) {
-        (*device->file_private_data) = NULL;
-    }
-    device->file_private_data = NULL;
     kfree(device);
 }
 

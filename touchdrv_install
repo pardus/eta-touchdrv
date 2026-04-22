@@ -2,6 +2,18 @@
 
 set -e
 
+LOCKDIR=/run/eta-touchdrv.lock
+
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+    exit 0
+fi
+
+cleanup() {
+    rmdir "$LOCKDIR"
+}
+
+trap cleanup EXIT INT TERM
+
 if lsusb | grep -qE "(6615:0084|6615:0085|6615:0086|6615:0087|6615:0088|6615:0c20)" ; then
     modprobe OpticalDrv
     /usr/bin/OpticalService

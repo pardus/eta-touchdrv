@@ -1,5 +1,11 @@
 2026-04-22  Vrdons <vrdons@proton.me>
 
+	* touch2/kernelSrc/OpticalDrv.c, touch4/kernel/OtdDrv.c: Reject
+	concurrent char-device opens with -EBUSY to avoid multi-instance
+	touchscreen state corruption.
+	* touchdrv_install: Ignore duplicate launcher instances with a
+	runtime lock directory.
+
 	* touch2/kernelSrc/OpticalDrv.c: Fix probe null dereference and
 	avoid input device double free on teardown.
 	* touch2/kernelSrc/OpticalDrv.c: Clamp interrupt URB copies to the
