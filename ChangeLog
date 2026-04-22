@@ -1,3 +1,7 @@
+2026-04-22  Vrdons <vrdons@proton.me>
+
+	* Code formatter
+
 2015-12-06  Gokhan Karabulut <gokhan.karabulut@tubitak.gov.tr>
 
 	* README.md, touch4/kernel/OtdTouchDriver.c: Solve ohci-hcd problems
