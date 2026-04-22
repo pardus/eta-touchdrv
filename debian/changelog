@@ -1,3 +1,11 @@
+eta-touchdrv (0.2.1) UNRELEASED; urgency=medium
+
+  * Fix kernel driver memory-safety issues and teardown handling.
+  * Update DKMS module build files for Debian/Pardus packaging.
+  * Clean up debian packaging layout and narrow udev service triggers.
+
+ -- Vrdons <vrdons@proton.me>  Wed, 22 Apr 2026 21:51:02 +0300
+
 eta-touchdrv (0.2.0) stable; urgency=medium
 
   * Update driver for Etap 19

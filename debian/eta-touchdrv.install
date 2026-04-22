@@ -1,0 +1,5 @@
+touch2/opticServer/OpticalService usr/bin/
+touch2/calibrationTools/calibrationTools usr/bin/
+touch4/otdServer/OtdTouchServer usr/bin/
+touch4/calibration/OtdCalibrationTool usr/bin/
+touchdrv_install usr/bin/
