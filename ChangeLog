@@ -1,5 +1,20 @@
 2026-04-22  Vrdons <vrdons@proton.me>
 
+	* touch2/kernelSrc/OpticalDrv.c: Fix probe null dereference and
+	avoid input device double free on teardown.
+	* touch2/kernelSrc/OpticalDrv.c: Clamp interrupt URB copies to the
+	fixed receive buffer size.
+	* touch4/kernel/OtdDrv.c: Initialize GET_REPORT request ID from user
+	data instead of uninitialized heap memory.
+	* touch4/kernel/OtdDrv.c: Fix probe failure cleanup and prevent
+	char-device use-after-free across USB disconnect.
+	* touch2/kernelSrc/Makefile, touch4/kernel/Makefile: Use KVER-aware
+	Kbuild module targets for Debian/Pardus DKMS builds.
+	* touch2/kernelSrc/OpticalDrv.c, touch4/kernel/OtdDrv.c: Add missing
+	string declarations for GCC/clang kernel builds.
+
+2026-04-22  Vrdons <vrdons@proton.me>
+
 	* Code formatter
 
 2015-12-06  Gokhan Karabulut <gokhan.karabulut@tubitak.gov.tr>
@@ -18,4 +33,3 @@
 2015-12-06  Gokhan Karabulut <gokhan.karabulut@tubitak.gov.tr>
 
 	* Initial commit
-

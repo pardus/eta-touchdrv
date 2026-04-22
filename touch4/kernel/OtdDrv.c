@@ -9,9 +9,13 @@
 #include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/kernel.h>
+#include <linux/kref.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
+#include <linux/string.h>
 #include <linux/usb.h>
 #include <linux/usb/input.h>
+#include <linux/version.h>
 
 #define DRIVER_NAME "Optical touch device"
 #define DEVICE_NAME "Otd"
@@ -34,12 +38,21 @@ typedef struct _device_context {
     device_context_pool pool;
     dev_t dev;
     int pipe_input;
+    struct kref kref;
+    struct mutex io_lock;
+    bool disconnected;
 } device_context;
 
 static struct usb_device_id const dev_table[] = {
     {USB_DEVICE(0x2621, 0x2201)}, {USB_DEVICE(0x2621, 0x4501)}, {}};
 
 static struct class* otd_class;
+
+static void otd_delete(struct kref* kref) {
+    device_context* otd = container_of(kref, device_context, kref);
+
+    kfree(otd);
+}
 
 static ssize_t otd_read(struct file* filp, char* buffer, size_t count, loff_t* ppos) {
     int retval;
@@ -54,8 +67,14 @@ static ssize_t otd_read(struct file* filp, char* buffer, size_t count, loff_t* p
         return -EFAULT;
     }
 
+    mutex_lock(&otd->io_lock);
+    if (otd->disconnected) {
+        mutex_unlock(&otd->io_lock);
+        return -ENODEV;
+    }
     retval = usb_interrupt_msg(otd->usb_device, otd->pipe_input, otd->inBuff, sizeof(otd->inBuff),
                                &bytes_read, 1000);
+    mutex_unlock(&otd->io_lock);
     if (retval == -ETIMEDOUT) {
         return 0;
     }
@@ -80,6 +99,13 @@ static ssize_t otd_write(struct file* filp, const char* user_buffer, size_t coun
         err("%s: private_data is NULL!", __func__);
         return -EFAULT;
     }
+
+    mutex_lock(&otd->io_lock);
+    if (otd->disconnected) {
+        mutex_unlock(&otd->io_lock);
+        return -ENODEV;
+    }
+    mutex_unlock(&otd->io_lock);
 
     return -EFAULT;
 }
@@ -111,6 +137,7 @@ static long set_report(device_context* otd, unsigned short length, void const* d
 }
 static long get_report(device_context* otd, unsigned short length, void* data) {
     void* kernel_data;
+    unsigned char report_id;
     int r;
 
     kernel_data = kmalloc(length, GFP_KERNEL);
@@ -121,9 +148,12 @@ static long get_report(device_context* otd, unsigned short length, void* data) {
         if (length < 1) {
             break;
         }
+        r = raw_copy_from_user(&report_id, data, sizeof(report_id));
+        if (r != 0) {
+            break;
+        }
         r = usb_control_msg(otd->usb_device, usb_rcvctrlpipe(otd->usb_device, 0), 0, 0xc0,
-                            0x300 | (((unsigned char const*)kernel_data)[0] & 0xff), 0, kernel_data,
-                            length, 1000);
+                            0x300 | (report_id & 0xff), 0, kernel_data, length, 1000);
         if (r >= 0) {
             if (raw_copy_to_user(data, kernel_data, r) != 0) {
                 break;
@@ -167,6 +197,7 @@ static long sync_multitouch(device_context* otd, unsigned short length, void con
 }
 static long otd_unlocked_ioctl(struct file* filp, unsigned int ctl_code, unsigned long ctl_param) {
     device_context* otd;
+    long retval;
 
     otd = filp->private_data;
     if (otd == NULL) {
@@ -174,16 +205,29 @@ static long otd_unlocked_ioctl(struct file* filp, unsigned int ctl_code, unsigne
         return -EFAULT;
     }
 
+    mutex_lock(&otd->io_lock);
+    if (otd->disconnected) {
+        mutex_unlock(&otd->io_lock);
+        return -ENODEV;
+    }
+
     switch (ctl_code & OTD_IOCTL_CODE_TYPE_MASK) {
         case OTD_IOCTL_CODE_TYPE_SET_REPORT:
-            return set_report(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+            retval = set_report(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+            break;
         case OTD_IOCTL_CODE_TYPE_GET_REPORT:
-            return get_report(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void*)ctl_param);
+            retval = get_report(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void*)ctl_param);
+            break;
         case OTD_IOCTL_CODE_TYPE_SYNC_MULTITOUCH:
-            return sync_multitouch(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK,
-                                   (void const*)ctl_param);
+            retval =
+                sync_multitouch(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+            break;
+        default:
+            retval = 0;
+            break;
     }
-    return 0;
+    mutex_unlock(&otd->io_lock);
+    return retval;
 }
 
 static int otd_open(struct inode* inode, struct file* filp) {
@@ -195,12 +239,30 @@ static int otd_open(struct inode* inode, struct file* filp) {
     }
 
     otd = container_of(inode->i_cdev, device_context, cdev);
+
+    mutex_lock(&otd->io_lock);
+    if (otd->disconnected) {
+        mutex_unlock(&otd->io_lock);
+        return -ENODEV;
+    }
+    kref_get(&otd->kref);
+    mutex_unlock(&otd->io_lock);
+
     filp->private_data = otd;
 
     return 0;
 }
 
-static int otd_release(struct inode* inode, struct file* filp) { return 0; }
+static int otd_release(struct inode* inode, struct file* filp) {
+    device_context* otd = filp->private_data;
+
+    filp->private_data = NULL;
+    if (otd != NULL) {
+        kref_put(&otd->kref, otd_delete);
+    }
+
+    return 0;
+}
 
 static struct file_operations otd_fops = {
     .owner = THIS_MODULE,
@@ -289,10 +351,16 @@ static int otd_probe(struct usb_interface* intf, const struct usb_device_id* id)
     otd = kzalloc(sizeof(device_context), GFP_KERNEL);
     if (otd == NULL) {
         err("%s: Out of memory.", __func__);
+        return -ENOMEM;
     }
     device_context_init(otd, intf);
+    kref_init(&otd->kref);
+    mutex_init(&otd->io_lock);
+    otd->disconnected = false;
     otd->input_dev = input_allocate_device();
     if (otd->input_dev == NULL) {
+        kref_put(&otd->kref, otd_delete);
+        return -ENOMEM;
     }
     input_dev_init(otd->input_dev, &otd->pool, otd->usb_device, &intf->dev);
     retval = 1;
@@ -319,28 +387,37 @@ static int otd_probe(struct usb_interface* intf, const struct usb_device_id* id)
 
     otd->device = device_create(otd_class, NULL, otd->dev, NULL, DEVICE_NODE_NAME);
     if (IS_ERR(otd->device)) {
+        retval = PTR_ERR(otd->device);
         err("%s: device_create error=%d", __func__, retval);
+        cdev_del(&otd->cdev);
+        unregister_chrdev_region(otd->dev, 1);
+        usb_set_intfdata(intf, NULL);
+        input_unregister_device(otd->input_dev);
+        otd->input_dev = NULL;
+        kref_put(&otd->kref, otd_delete);
+        return retval;
     }
     return 0;
-    device_destroy(otd_class, otd->dev);
-    unregister_chrdev_region(otd->dev, 1);
-    usb_set_intfdata(intf, NULL);
-    input_unregister_device(otd->input_dev);
-    input_free_device(otd->input_dev);
-    kfree(otd);
-    return -ENOMEM;
 }
 
 static void otd_disconnect(struct usb_interface* intf) {
     device_context* otd = usb_get_intfdata(intf);
 
-    // cdev_del(&otd->cdev);
+    if (otd == NULL) {
+        return;
+    }
+
+    mutex_lock(&otd->io_lock);
+    otd->disconnected = true;
+    mutex_unlock(&otd->io_lock);
+
+    cdev_del(&otd->cdev);
     device_destroy(otd_class, otd->dev);
     unregister_chrdev_region(otd->dev, 1);
     usb_set_intfdata(intf, NULL);
     input_unregister_device(otd->input_dev);
-    input_free_device(otd->input_dev);
-    kfree(otd);
+    otd->input_dev = NULL;
+    kref_put(&otd->kref, otd_delete);
 }
 
 static struct usb_driver otd_driver = {
@@ -354,7 +431,11 @@ static int otd_init(void) {
     int result;
 
     // ֮ǰ��otd_mkdev��
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+    otd_class = class_create(DEVICE_NODE_NAME);
+#else
     otd_class = class_create(THIS_MODULE, DEVICE_NODE_NAME);
+#endif
     if (IS_ERR(otd_class)) {
         err("%s: Class create failed.", __func__);
     }

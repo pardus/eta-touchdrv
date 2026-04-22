@@ -10,6 +10,7 @@
 #include <linux/input/mt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/string.h>
 #include <linux/usb.h>
 #include <linux/usb/input.h>
 
@@ -303,6 +304,10 @@ static int optical_open(struct inode* inode, struct file* filp) {
         return -1;
     }
     device = usb_get_intfdata(interface);
+    if (device == NULL) {
+        err("%s: device context is NULL.", __func__);
+        return -ENODEV;
+    }
     if (device->file_private_data != NULL) {
         return -EFAULT;
     }
@@ -335,6 +340,7 @@ static struct file_operations optical_fops = {
 
 static void on_interrupt(struct urb* interrupt_urb) {
     device_context* device;
+    unsigned int length;
 
     device = interrupt_urb->context;
 
@@ -348,8 +354,9 @@ static void on_interrupt(struct urb* interrupt_urb) {
     spin_lock(&device->lock);
     if (interrupt_urb->status == 0) {
         if (interrupt_urb->actual_length > 0) {
-            memcpy(device->buffer, device->ongoing_buffer, interrupt_urb->actual_length);
-            device->buffer_length = interrupt_urb->actual_length;
+            length = min_t(unsigned int, interrupt_urb->actual_length, sizeof(device->buffer));
+            memcpy(device->buffer, device->ongoing_buffer, length);
+            device->buffer_length = length;
         }
     }
     spin_unlock(&device->lock);
@@ -447,11 +454,11 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
 
     do {
         device = kzalloc(sizeof(device_context), GFP_KERNEL);
-        device->file_private_data = NULL;
         if (device == NULL) {
             err("%s: Out of memory.", __func__);
             break;
         }
+        device->file_private_data = NULL;
         do {
             device_context_init(device, intf);
             device->input_dev = input_allocate_device();
@@ -499,13 +506,16 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
                             usb_set_intfdata(intf, NULL);
                         } while (false);
                         input_unregister_device(device->input_dev);
+                        device->input_dev = NULL;
                     } while (false);
                     usb_free_urb(device->interrupt_urb);
                 } while (false);
                 usb_free_coherent(device->usb_device, sizeof(device->buffer),
                                   device->ongoing_buffer, device->ongoing_buffer_dma);
             } while (false);
-            input_free_device(device->input_dev);
+            if (device->input_dev != NULL) {
+                input_free_device(device->input_dev);
+            }
         } while (false);
         if (device->file_private_data != NULL) {
             *(device->file_private_data) = NULL;
@@ -526,10 +536,10 @@ static void optical_disconnect(struct usb_interface* intf) {
     usb_deregister_dev(intf, &optical_class);
     usb_set_intfdata(intf, NULL);
     input_unregister_device(device->input_dev);
+    device->input_dev = NULL;
     usb_free_urb(device->interrupt_urb);
     usb_free_coherent(device->usb_device, sizeof(device->buffer), device->ongoing_buffer,
                       device->ongoing_buffer_dma);
-    input_free_device(device->input_dev);
     if (device->file_private_data != NULL) {
         (*device->file_private_data) = NULL;
     }
