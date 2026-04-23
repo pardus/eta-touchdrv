@@ -1,2 +1,4 @@
 *.o
 *.o.d
+debian/.debhelper/
+debian/eta-touchdrv/
