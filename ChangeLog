@@ -1,8 +1,4 @@
 2026-04-22  Vrdons <vrdons@proton.me>
-
-	* touch2/kernelSrc/OpticalDrv.c, touch4/kernel/OtdDrv.c: Reject
-	concurrent char-device opens with -EBUSY to avoid multi-instance
-	touchscreen state corruption.
 	* touchdrv_install: Ignore duplicate launcher instances with a
 	runtime lock directory.
 
@@ -18,9 +14,6 @@
 	Kbuild module targets for Debian/Pardus DKMS builds.
 	* touch2/kernelSrc/OpticalDrv.c, touch4/kernel/OtdDrv.c: Add missing
 	string declarations for GCC/clang kernel builds.
-
-2026-04-22  Vrdons <vrdons@proton.me>
-
 	* Code formatter
 
 2015-12-06  Gokhan Karabulut <gokhan.karabulut@tubitak.gov.tr>

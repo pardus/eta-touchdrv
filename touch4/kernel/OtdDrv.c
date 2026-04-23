@@ -41,7 +41,6 @@ typedef struct _device_context {
     struct kref kref;
     struct mutex io_lock;
     bool disconnected;
-    bool opened;
 } device_context;
 
 static struct usb_device_id const dev_table[] = {
@@ -246,11 +245,6 @@ static int otd_open(struct inode* inode, struct file* filp) {
         mutex_unlock(&otd->io_lock);
         return -ENODEV;
     }
-    if (otd->opened) {
-        mutex_unlock(&otd->io_lock);
-        return -EBUSY;
-    }
-    otd->opened = true;
     kref_get(&otd->kref);
     mutex_unlock(&otd->io_lock);
 
@@ -264,9 +258,6 @@ static int otd_release(struct inode* inode, struct file* filp) {
 
     filp->private_data = NULL;
     if (otd != NULL) {
-        mutex_lock(&otd->io_lock);
-        otd->opened = false;
-        mutex_unlock(&otd->io_lock);
         kref_put(&otd->kref, otd_delete);
     }
 
@@ -366,7 +357,6 @@ static int otd_probe(struct usb_interface* intf, const struct usb_device_id* id)
     kref_init(&otd->kref);
     mutex_init(&otd->io_lock);
     otd->disconnected = false;
-    otd->opened = false;
     otd->input_dev = input_allocate_device();
     if (otd->input_dev == NULL) {
         kref_put(&otd->kref, otd_delete);
