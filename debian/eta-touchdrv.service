@@ -4,7 +4,7 @@ Description=Non-HID touchscreen servers
 [Service]
 Type=simple
 ExecStart=/usr/bin/touchdrv_install
-Restart=on-failure
+Restart=always
 RestartSec=2s
 
 [Install]
