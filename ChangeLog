@@ -1,5 +1,5 @@
 2026-04-23  Vrdons <vrdons@proton.me>
-	* touch2, touch4 (Makefile): apply -O3 optimization
+	* touch2, touch4 (Makefile): apply -O2 optimization (clang)
 	* touch2, touch4: add lifecycle safety and improve input/URB handling
 
 2026-04-22  Vrdons <vrdons@proton.me>

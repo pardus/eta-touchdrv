@@ -1,6 +1,6 @@
 MODULE := OpticalDrv2
 
-ccflags-y += -O3
+ccflags-y += -O2
 
 ifneq ($(KERNELRELEASE),)
 	obj-m := $(MODULE).o
@@ -8,7 +8,6 @@ else
 	KVER ?= $(shell uname -r)
 	KDIR ?= /lib/modules/$(KVER)/build
 	PWD := $(CURDIR)
-	KBUILD ?= LLVM=1
 
 .PHONY: all clean new rebuild
 
