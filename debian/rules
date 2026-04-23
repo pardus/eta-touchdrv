@@ -7,8 +7,8 @@ VERSION := $(shell dpkg-parsechangelog -SVersion)
 
 override_dh_install:
 	dh_install
-	dh_install touch2/kernelSrc/Makefile touch2/kernelSrc/OpticalDrv.c touch2/kernelSrc/OpticalDrv.h usr/src/eta-touchdrv-$(VERSION)/touch2/
-	dh_install touch4/kernel/Makefile touch4/kernel/OtdDrv.c touch4/kernel/OtdDrv.h usr/src/eta-touchdrv-$(VERSION)/touch4/
+	dh_install touch2/kernel/Makefile touch2/kernel/OpticalDrv2.c touch2/kernel/OpticalDrv.h usr/src/eta-touchdrv-$(VERSION)/touch2/kernel/
+	dh_install touch4/kernel/Makefile touch4/kernel/OpticalDrv4.c touch4/kernel/OpticalDrv.h usr/src/eta-touchdrv-$(VERSION)/touch4/kernel/
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)

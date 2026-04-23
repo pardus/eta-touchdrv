@@ -1,4 +1,4 @@
-MODULE := OpticalDrv
+MODULE := OpticalDrv2
 
 ccflags-y += -O3
 
