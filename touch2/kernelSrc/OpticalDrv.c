@@ -470,7 +470,7 @@ static void device_context_init(device_context* obj, struct usb_interface* intf)
 static void input_dev_init(struct input_dev* obj, device_context_pool* pool,
                            struct usb_device* usb_device, struct device* parent) {
     if (usb_device->manufacturer != NULL) {
-        strlcpy(pool->name, usb_device->manufacturer, sizeof(pool->name));
+        strscpy(pool->name, usb_device->manufacturer, sizeof(pool->name));
     } else {
         pool->name[0] = 0;
     }

@@ -1,4 +1,42 @@
+# Kernel build artifacts
 *.o
-*.o.d
+*.o.*
+*.ko
+*.mod*
+*.mod.c
+*.cmd
+*.d
+*.symvers
+*.order
+Module.symvers
+modules.order
+*.a
+*.tmp_versions/
+*.ko.cmd
+*.mod.cmd
+*.o.cmd
+
+# DKMS / build dirs
+*.dkms/
+*.dkms.*
+dkms.conf
+
+# Debian packaging
 debian/.debhelper/
 debian/eta-touchdrv/
+debian/*.debhelper.log
+debian/*.substvars
+debian/files
+debian/*.debhelper
+debian/debhelper-build-stamp
+
+# build outputs
+build/
+dist/
+out/
+
+# editor / system junk
+*~
+*.swp
+*.swo
+.DS_Store

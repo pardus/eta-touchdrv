@@ -10,7 +10,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     devscripts \
     equivs
 
-RUN apt-get install -y --no-install-recommends libx11-6 # required by calibration
+# required by calibration
+RUN apt-get install -y --no-install-recommends libx11-6 
+
+# clang build
+RUN apt-get update && apt-get install -y \
+    clang \
+    llvm \
+    lld
 
 # RUN rm -rf /var/lib/apt/lists/*
 

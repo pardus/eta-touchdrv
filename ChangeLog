@@ -1,5 +1,5 @@
 2026-04-23  Vrdons <vrdons@proton.me>
-
+	* touch2, touch4: apply -O3 optimization
 	* touch2/kernelSrc/OpticalDrv.c: Keep device state alive across
 	open file handles until disconnect and release both complete.
 
