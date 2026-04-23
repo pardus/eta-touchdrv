@@ -9,7 +9,9 @@
 #include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/kernel.h>
+#include <linux/kref.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/string.h>
 #include <linux/usb.h>
 #include <linux/usb/input.h>
@@ -31,11 +33,14 @@ typedef struct _device_context {
     struct input_dev* input_dev;
     struct device* device;
     dev_t dev;
-    void** file_private_data;
     int pipe_input;
     unsigned char pipe_interval;
 
     struct urb* interrupt_urb;
+    struct kref kref;
+    struct mutex io_lock;
+    bool disconnected;
+    bool is_open;
 
     spinlock_t lock;
 
@@ -65,6 +70,24 @@ static struct usb_class_driver optical_class = {
     .minor_base = OPTICAL_MINOR_BASE,
 };
 
+static void optical_delete(struct kref* kref) {
+    device_context* device = container_of(kref, device_context, kref);
+
+    kfree(device);
+}
+
+static int optical_begin_io(device_context* device) {
+    mutex_lock(&device->io_lock);
+    if (device->disconnected) {
+        mutex_unlock(&device->io_lock);
+        return -ENODEV;
+    }
+
+    return 0;
+}
+
+static void optical_end_io(device_context* device) { mutex_unlock(&device->io_lock); }
+
 static void submit_urb(device_context* device) {
     int retval;
 
@@ -84,6 +107,11 @@ static ssize_t optical_read(struct file* filp, char* buffer, size_t count, loff_
         return -EFAULT;
     }
 
+    r = optical_begin_io(device);
+    if (r != 0) {
+        return r;
+    }
+
     spin_lock_irq(&device->lock);
     do {
         if (device->buffer_length <= 0) {
@@ -101,6 +129,7 @@ static ssize_t optical_read(struct file* filp, char* buffer, size_t count, loff_
         r = count;
     } while (false);
     spin_unlock_irq(&device->lock);
+    optical_end_io(device);
 
     return r;
 }
@@ -113,6 +142,11 @@ static ssize_t optical_write(struct file* filp, const char* user_buffer, size_t 
     if (device == NULL) {
         return -EFAULT;
     }
+
+    if (optical_begin_io(device) != 0) {
+        return -ENODEV;
+    }
+    optical_end_io(device);
 
     return -EFAULT;
 }
@@ -250,44 +284,65 @@ static long sync_virtualkey(device_context* device, unsigned short length, void 
 static long optical_unlocked_ioctl(struct file* filp, unsigned int ctl_code,
                                    unsigned long ctl_param) {
     device_context* device;
+    long retval;
 
     device = filp->private_data;
     if (device == NULL) {
         return -EFAULT;
     }
 
+    retval = optical_begin_io(device);
+    if (retval != 0) {
+        return retval;
+    }
+
     switch (ctl_code & OPTICAL_IOCTL_CODE_TYPE_MASK) {
         case OPTICAL_IOCTL_CODE_TYPE_SET_REPORT:
-            return set_report(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                              (void const*)ctl_param);
+            retval = set_report(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                (void const*)ctl_param);
+            break;
         case OPTICAL_IOCTL_CODE_TYPE_GET_REPORT:
-            return get_report(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void*)ctl_param);
+            retval =
+                get_report(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void*)ctl_param);
+            break;
         case OPTICAL_IOCTL_CODE_TYPE_SYNC_ABSOLUTEMOUSE:
-            return sync_absolute_mouse(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                                       (void const*)ctl_param);
+            retval = sync_absolute_mouse(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                         (void const*)ctl_param);
+            break;
         case OPTICAL_IOCTL_CODE_TYPE_SYNC_SINGLETOUCH:
-            return sync_singletouch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                                    (void const*)ctl_param);
+            retval = sync_singletouch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                      (void const*)ctl_param);
+            break;
         case OPTICAL_IOCTL_CODE_TYPE_SYNC_MULTITOUCH:
-            return sync_multitouch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                                   (void const*)ctl_param);
+            retval = sync_multitouch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                     (void const*)ctl_param);
+            break;
         case OPTICAL_IOCTL_CODE_TYPE_SYNC_KEYBOARD:
-            return sync_keyboard(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                                 (void const*)ctl_param);
-        case OPTICAL_IOCTL_CODE_TYPE_SYNC_DIAGNOSIS:
-            return sync_diagnosis(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                                  (void const*)ctl_param);
-        case OPTICAL_IOCTL_CODE_TYPE_SYNC_RAWTOUCH:
-            return sync_rawtouch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                                 (void const*)ctl_param);
-        case OPTICAL_IOCTL_CODE_TYPE_SYNC_TOUCH:
-            return sync_touch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
-                              (void const*)ctl_param);
-        case OPTICAL_IOCTL_CODE_TYPE_SYNC_VIRTUALKEY:
-            return sync_virtualkey(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+            retval = sync_keyboard(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
                                    (void const*)ctl_param);
+            break;
+        case OPTICAL_IOCTL_CODE_TYPE_SYNC_DIAGNOSIS:
+            retval = sync_diagnosis(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                    (void const*)ctl_param);
+            break;
+        case OPTICAL_IOCTL_CODE_TYPE_SYNC_RAWTOUCH:
+            retval = sync_rawtouch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                   (void const*)ctl_param);
+            break;
+        case OPTICAL_IOCTL_CODE_TYPE_SYNC_TOUCH:
+            retval = sync_touch(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                (void const*)ctl_param);
+            break;
+        case OPTICAL_IOCTL_CODE_TYPE_SYNC_VIRTUALKEY:
+            retval = sync_virtualkey(device, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK,
+                                     (void const*)ctl_param);
+            break;
+        default:
+            retval = 0;
+            break;
     }
-    return 0;
+    optical_end_io(device);
+    return retval;
 }
 
 static int optical_open(struct inode* inode, struct file* filp) {
@@ -308,10 +363,21 @@ static int optical_open(struct inode* inode, struct file* filp) {
         err("%s: device context is NULL.", __func__);
         return -ENODEV;
     }
-    if (device->file_private_data != NULL) {
-        return -EFAULT;
+
+    mutex_lock(&device->io_lock);
+    if (device->disconnected) {
+        mutex_unlock(&device->io_lock);
+        return -ENODEV;
     }
-    device->file_private_data = &filp->private_data;
+
+    if (device->is_open) {
+        mutex_unlock(&device->io_lock);
+        return -EBUSY;
+    }
+
+    device->is_open = true;
+    kref_get(&device->kref);
+    mutex_unlock(&device->io_lock);
     filp->private_data = device;
 
     return 0;
@@ -322,7 +388,10 @@ static int optical_release(struct inode* inode, struct file* filp) {
 
     device = filp->private_data;
     if (device != NULL) {
-        device->file_private_data = NULL;
+        mutex_lock(&device->io_lock);
+        device->is_open = false;
+        mutex_unlock(&device->io_lock);
+        kref_put(&device->kref, optical_delete);
     }
     filp->private_data = NULL;
 
@@ -458,7 +527,6 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
             err("%s: Out of memory.", __func__);
             break;
         }
-        device->file_private_data = NULL;
         do {
             device_context_init(device, intf);
             device->input_dev = input_allocate_device();
@@ -466,6 +534,10 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
                 break;
             }
             do {
+                kref_init(&device->kref);
+                mutex_init(&device->io_lock);
+                device->disconnected = false;
+                device->is_open = false;
                 spin_lock_init(&device->lock);
                 device->ongoing_buffer =
                     usb_alloc_coherent(device->usb_device, sizeof(device->buffer), GFP_ATOMIC,
@@ -517,10 +589,6 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
                 input_free_device(device->input_dev);
             }
         } while (false);
-        if (device->file_private_data != NULL) {
-            *(device->file_private_data) = NULL;
-        }
-        device->file_private_data = NULL;
         kfree(device);
     } while (false);
     return -ENOMEM;
@@ -528,23 +596,24 @@ static int optical_probe(struct usb_interface* intf, const struct usb_device_id*
 
 static void optical_disconnect(struct usb_interface* intf) {
     device_context* device = usb_get_intfdata(intf);
-    int minor;
 
-    minor = intf->minor;
-    device = usb_get_intfdata(intf);
+    if (device == NULL) {
+        return;
+    }
+
+    mutex_lock(&device->io_lock);
+    device->disconnected = true;
+    mutex_unlock(&device->io_lock);
 
     usb_deregister_dev(intf, &optical_class);
     usb_set_intfdata(intf, NULL);
+    cancel_urb(device);
     input_unregister_device(device->input_dev);
     device->input_dev = NULL;
     usb_free_urb(device->interrupt_urb);
     usb_free_coherent(device->usb_device, sizeof(device->buffer), device->ongoing_buffer,
                       device->ongoing_buffer_dma);
-    if (device->file_private_data != NULL) {
-        (*device->file_private_data) = NULL;
-    }
-    device->file_private_data = NULL;
-    kfree(device);
+    kref_put(&device->kref, optical_delete);
 }
 
 static struct usb_driver optical_driver = {
