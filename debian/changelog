@@ -1,11 +1,7 @@
 eta-touchdrv (0.2.1) UNRELEASED; urgency=medium
 
-  * Fix DKMS debhelper sequencing by depending on dh-sequence-dkms.
-  * Make the touchscreen service retry until USB devices are enumerated.
   * Fix kernel driver memory-safety issues and teardown handling.
   * Hold touch2 device instances until open file descriptors are released.
-  * Update DKMS module build files for Debian/Pardus packaging.
-  * Clean up debian packaging layout and narrow udev service triggers.
 
  -- Vrdons <vrdons@proton.me>  Thu, 23 Apr 2026 12:00:00 +0300
 
