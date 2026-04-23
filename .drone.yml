@@ -6,9 +6,7 @@ build:
     commands:
       - id
       - apt-get update
-      - apt-get install build-essential debhelper dh-sequence-dkms dkms devscripts equivs \
-        libx11-6 clang llvm lld
-      - mkdir -p build-area
+      - apt-get install build-essential equivs devscripts dwarves
       - cd build-area
       - dpkg-source -x /packages/$(basename $DRONE_REPO)/*.dsc build-$(basename $DRONE_REPO)
       - cd build-$(basename $DRONE_REPO)
