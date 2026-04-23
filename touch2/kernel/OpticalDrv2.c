@@ -1,5 +1,3 @@
-#include "OpticalDrv.h"
-
 #include <linux/errno.h>
 #include <linux/input.h>
 #include <linux/input/mt.h>
@@ -13,32 +11,15 @@
 #include <linux/usb.h>
 #include <linux/usb/input.h>
 
+#ifndef OPTICAL_TOUCH_POINT_COUNT
+#define OPTICAL_TOUCH_POINT_COUNT 2
+#endif
+
+#include <OpticalDrv.h>
+
 #define DRIVER_NAME "IRTOUCH optical"
 
 #define err(format, arg...) printk(KERN_ERR KBUILD_MODNAME ": " format "\n", ##arg)
-
-typedef struct _device_context_pool {
-    char name[128];
-    char phys[64];
-} device_context_pool;
-
-typedef struct _device_context {
-    struct usb_device* usb_device;
-    struct input_dev* input_dev;
-    int pipe_input;
-    unsigned char pipe_interval;
-
-    struct urb* interrupt_urb;
-    struct usb_anchor submitted;
-    struct kref kref;
-    struct mutex io_lock;
-    bool disconnected;
-
-    unsigned char* ongoing_buffer;
-    dma_addr_t ongoing_buffer_dma;
-
-    device_context_pool pool;
-} device_context;
 
 static struct usb_device_id const dev_table[] = {{USB_DEVICE(0x6615, 0x0084)},
                                                  {USB_DEVICE(0x6615, 0x0085)},

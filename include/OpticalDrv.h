@@ -1,7 +1,6 @@
 #ifndef _OPTICAL_DRV_H_
 #define _OPTICAL_DRV_H_
 
-#define OPTICAL_TOUCH_POINT_COUNT 2
 
 #pragma pack(1)
 
@@ -27,6 +26,30 @@ typedef struct _OpticalReportPacketMultiTouch {
     OpticalReportTouchPoint touchPoint[OPTICAL_TOUCH_POINT_COUNT];
     unsigned short scanTime;
 } OpticalReportPacketMultiTouch;
+
+
+typedef struct _device_context_pool {
+    char name[128];
+    char phys[64];
+} device_context_pool;
+
+typedef struct _device_context {
+    struct usb_device* usb_device;
+    struct input_dev* input_dev;
+    int pipe_input;
+    unsigned char pipe_interval;
+
+    struct urb* interrupt_urb;
+    struct usb_anchor submitted;
+    struct kref kref;
+    struct mutex io_lock;
+    bool disconnected;
+
+    unsigned char* ongoing_buffer;
+    dma_addr_t ongoing_buffer_dma;
+
+    device_context_pool pool;
+} device_context;
 
 #pragma pack()
 

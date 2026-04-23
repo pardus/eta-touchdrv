@@ -1,6 +1,7 @@
 MODULE := OpticalDrv2
 
 ccflags-y += -O2
+ccflags-y += -I$(src)/../../include
 
 ifneq ($(KERNELRELEASE),)
 	obj-m := $(MODULE).o

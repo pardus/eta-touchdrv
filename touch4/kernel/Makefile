@@ -1,5 +1,6 @@
 MODULE := OpticalDrv4
 
+ccflags-y += -I$(src)/../../include
 ccflags-y += -O2
 
 ifneq ($(KERNELRELEASE),)
