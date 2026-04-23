@@ -1,6 +1,4 @@
 2026-04-22  Vrdons <vrdons@proton.me>
-	* touchdrv_install: Ignore duplicate launcher instances with a
-	runtime lock directory.
 
 	* touch2/kernelSrc/OpticalDrv.c: Fix probe null dereference and
 	avoid input device double free on teardown.
