@@ -2,8 +2,17 @@
 # make -C somehow didn't work.
 PACKAGE_VERSION="__VERSION__"
 PACKAGE_NAME="eta-touchdrv"
+
+if grep -qi "clang" /proc/version 2>/dev/null; then
+    CC=clang
+    LLVM=1
+else
+    CC=gcc
+    LLVM=
+fi
+
 CLEAN="make KVER=${kernelver} clean"
-MAKE="make KVER=${kernelver}"
+MAKE="make CC=${CC} LLVM=${LLVM} KVER KVER=${kernelver}"
 BUILT_MODULE_NAME[0]="OpticalDrv2"
 BUILT_MODULE_LOCATION[0]=""
 DEST_MODULE_LOCATION[0]="/extra"
