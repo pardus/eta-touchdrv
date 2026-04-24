@@ -7,6 +7,7 @@
 #include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/kernel.h>
+#include <linux/mutex.h>
 #include <linux/module.h>
 #include <linux/string.h>
 #include <linux/usb.h>
@@ -44,6 +45,7 @@ static struct usb_class_driver optical_class = {
     .fops = &optical_fops,
     .minor_base = OPTICAL_MINOR_BASE,
 };
+static DEFINE_MUTEX(optical_file_lock);
 
 static void submit_urb(device_context *device) {
   int retval;
@@ -314,16 +316,20 @@ static int optical_open(struct inode *inode, struct file *filp) {
     err("%s: interface ptr is NULL.", __func__);
     return -1;
   }
+  mutex_lock(&optical_file_lock);
   device = usb_get_intfdata(interface);
   if (device == NULL) {
+    mutex_unlock(&optical_file_lock);
     err("%s: device context is NULL.", __func__);
     return -ENODEV;
   }
   if (device->file_private_data != NULL) {
+    mutex_unlock(&optical_file_lock);
     return -EFAULT;
   }
   device->file_private_data = &filp->private_data;
   filp->private_data = device;
+  mutex_unlock(&optical_file_lock);
 
   return 0;
 }
@@ -331,11 +337,13 @@ static int optical_open(struct inode *inode, struct file *filp) {
 static int optical_release(struct inode *inode, struct file *filp) {
   device_context *device;
 
+  mutex_lock(&optical_file_lock);
   device = filp->private_data;
   if (device != NULL) {
     device->file_private_data = NULL;
   }
   filp->private_data = NULL;
+  mutex_unlock(&optical_file_lock);
 
   return 0;
 }
@@ -548,18 +556,21 @@ static void optical_disconnect(struct usb_interface *intf) {
   device_context *device = usb_get_intfdata(intf);
   device = usb_get_intfdata(intf);
 
+  mutex_lock(&optical_file_lock);
   usb_deregister_dev(intf, &optical_class);
   usb_set_intfdata(intf, NULL);
+  if (device->file_private_data != NULL) {
+    (*device->file_private_data) = NULL;
+  }
+  device->file_private_data = NULL;
+  mutex_unlock(&optical_file_lock);
+
   input_unregister_device(device->input_dev);
   device->input_dev = NULL;
   cancel_urb(device);
   usb_free_urb(device->interrupt_urb);
   usb_free_coherent(device->usb_device, sizeof(device->buffer),
                     device->ongoing_buffer, device->ongoing_buffer_dma);
-  if (device->file_private_data != NULL) {
-    (*device->file_private_data) = NULL;
-  }
-  device->file_private_data = NULL;
   kfree(device);
 }
 
