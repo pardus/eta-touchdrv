@@ -552,6 +552,7 @@ static void optical_disconnect(struct usb_interface *intf) {
   usb_set_intfdata(intf, NULL);
   input_unregister_device(device->input_dev);
   device->input_dev = NULL;
+  cancel_urb(device);
   usb_free_urb(device->interrupt_urb);
   usb_free_coherent(device->usb_device, sizeof(device->buffer),
                     device->ongoing_buffer, device->ongoing_buffer_dma);
