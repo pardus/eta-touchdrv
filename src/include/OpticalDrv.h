@@ -29,6 +29,33 @@ typedef struct _OpticalReportPacketMultiTouch {
   unsigned short scanTime;
 } OpticalReportPacketMultiTouch;
 
+typedef struct _device_context_pool {
+  char name[128];
+  char phys[64];
+} device_context_pool;
+
+typedef struct _device_context {
+  struct usb_device *usb_device;
+  struct input_dev *input_dev;
+  struct device *device;
+  dev_t dev;
+  void **file_private_data;
+  int pipe_input;
+  unsigned char pipe_interval;
+
+  struct urb *interrupt_urb;
+
+  spinlock_t lock;
+
+  unsigned char *ongoing_buffer;
+  dma_addr_t ongoing_buffer_dma;
+
+  unsigned char buffer_length;
+  unsigned char buffer[64];
+
+  device_context_pool pool;
+} device_context;
+
 #pragma pack()
 
 // control code
