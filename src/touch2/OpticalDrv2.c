@@ -23,10 +23,8 @@
 #define strlcpy strscpy
 #endif
 
-#define err(format, arg...)                                                    \
-  printk(KERN_ERR KBUILD_MODNAME ": " format "\n", ##arg)
-#define info(format, arg...)                                                   \
-  printk(KERN_INFO KBUILD_MODNAME ": " format "\n", ##arg)
+#define err(format, arg...) pr_err(KBUILD_MODNAME ": " format "\n", ##arg)
+#define info(format, arg...) pr_info(KBUILD_MODNAME ": " format "\n", ##arg)
 
 #define OPTICAL_MINOR_BASE 0
 
