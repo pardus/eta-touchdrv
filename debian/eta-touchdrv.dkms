@@ -12,7 +12,7 @@ else
 fi
 
 CLEAN="make KVER=${kernelver} clean"
-MAKE="make CC=${CC} LLVM=${LLVM} KVER KVER=${kernelver}"
+MAKE="make CC=${CC} LLVM=${LLVM} KVER=${kernelver}"
 BUILT_MODULE_NAME[0]="OpticalDrv2"
 BUILT_MODULE_LOCATION[0]=""
 DEST_MODULE_LOCATION[0]="/extra"
