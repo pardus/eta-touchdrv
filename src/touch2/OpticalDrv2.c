@@ -1,4 +1,4 @@
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -572,7 +572,6 @@ static int optical_probe(struct usb_interface *intf,
 
 static void optical_disconnect(struct usb_interface *intf) {
   device_context *device = usb_get_intfdata(intf);
-  device = usb_get_intfdata(intf);
 
   mutex_lock(&optical_file_lock);
   usb_deregister_dev(intf, &optical_class);

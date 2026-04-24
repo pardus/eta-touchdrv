@@ -7,8 +7,8 @@
 #include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/kernel.h>
-#include <linux/mutex.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/string.h>
 #include <linux/usb.h>
 #include <linux/usb/input.h>
@@ -569,7 +569,6 @@ static int optical_probe(struct usb_interface *intf,
 
 static void optical_disconnect(struct usb_interface *intf) {
   device_context *otd = usb_get_intfdata(intf);
-  otd = usb_get_intfdata(intf);
 
   mutex_lock(&optical_file_lock);
   usb_deregister_dev(intf, &optical_class);
