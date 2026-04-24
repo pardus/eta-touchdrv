@@ -23,6 +23,12 @@
 #define err(format, arg...) pr_err(KBUILD_MODNAME ": " format "\n", ##arg)
 #define info(format, arg...) pr_info(KBUILD_MODNAME ": " format "\n", ##arg)
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+#define optical_access_ok(type, ptr, size) access_ok(ptr, size)
+#else
+#define optical_access_ok(type, ptr, size) access_ok(type, ptr, size)
+#endif
+
 #define OPTICAL_MINOR_BASE 0
 
 static struct usb_device_id const dev_table[] = {
@@ -99,6 +105,9 @@ static long set_report(device_context *otd, unsigned short length,
   void *kernel_data;
   int r;
 
+  if (!optical_access_ok(VERIFY_READ, data, length)) {
+    return -EFAULT;
+  }
   kernel_data = kzalloc(length, GFP_KERNEL);
   if (kernel_data == NULL) {
     return -ENOMEM;
@@ -123,6 +132,9 @@ static long get_report(device_context *otd, unsigned short length, void *data) {
   void *kernel_data;
   int r;
 
+  if (!optical_access_ok(VERIFY_WRITE, data, length)) {
+    return -EFAULT;
+  }
   kernel_data = kzalloc(length, GFP_KERNEL);
   if (kernel_data == NULL) {
     return -ENOMEM;
@@ -156,6 +168,9 @@ static long sync_singletouch(device_context *otd, unsigned short length,
 
   if (length < sizeof(value)) {
     return 0;
+  }
+  if (!optical_access_ok(VERIFY_READ, data, sizeof(value))) {
+    return -EFAULT;
   }
   r = copy_from_user(&value, data, sizeof(value));
   if (r != 0) {
@@ -191,6 +206,9 @@ static long sync_multitouch(device_context *otd, unsigned short length,
   int r;
 
   if (length < sizeof(value)) {
+    return 0;
+  }
+  if (!optical_access_ok(VERIFY_READ, data, sizeof(value))) {
     return 0;
   }
   r = copy_from_user(&value, data, sizeof(value));
