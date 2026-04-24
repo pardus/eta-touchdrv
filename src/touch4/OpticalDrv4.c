@@ -29,7 +29,6 @@
 static struct usb_device_id const dev_table[] = {
     {USB_DEVICE(0x2621, 0x2201)}, {USB_DEVICE(0x2621, 0x4501)}, {}};
 
-static struct usb_driver optical_driver;
 static struct file_operations optical_fops;
 static struct usb_driver optical_driver;
 static struct usb_class_driver optical_class = {
