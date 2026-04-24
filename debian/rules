@@ -7,7 +7,7 @@ DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 	dh $@ --with dkms
 
 override_dh_install:
-	dh_install src usr/src/eta-touchdrv-$(VERSION)/
+	dh_install src/* usr/src/eta-touchdrv-$(VERSION)/
 ifeq ($(DEB_HOST_ARCH),amd64)
 	dh_install bin/touch2/*x86_64 usr/bin/touch2/
 	dh_install bin/touch4/*x86_64 usr/bin/touch4/
