@@ -1,4 +1,4 @@
-#include <asm/uaccess.h>
+#include <linux/uaccess.hh>
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -79,10 +79,16 @@ static ssize_t optical_read(struct file *filp, char *buffer, size_t count,
     return -EFAULT;
   }
 
+  r = wait_event_interruptible(otd->read_wait,
+                               otd->buffer_length > 0 || otd->disconnected);
+  if (r != 0) {
+    return r;
+  }
+
   spin_lock_irq(&otd->lock);
   do {
     if (otd->buffer_length <= 0) {
-      r = 0;
+      r = otd->disconnected ? -ENODEV : 0;
       break;
     }
     if (count > otd->buffer_length) {
@@ -340,7 +346,7 @@ static int optical_open(struct inode *inode, struct file *filp) {
 
   if (interface == NULL) {
     err("%s: interface ptr is NULL.", __func__);
-    return -1;
+    return -ENODEV;
   }
   mutex_lock(&optical_file_lock);
   otd = usb_get_intfdata(interface);
@@ -351,7 +357,7 @@ static int optical_open(struct inode *inode, struct file *filp) {
   }
   if (otd->file_private_data != NULL) {
     mutex_unlock(&optical_file_lock);
-    return -EFAULT;
+    return -EBUSY;
   }
   otd->file_private_data = &filp->private_data;
   filp->private_data = otd;
@@ -406,6 +412,9 @@ static void on_interrupt(struct urb *interrupt_urb) {
     }
   }
   spin_unlock(&otd->lock);
+  if (otd->buffer_length > 0) {
+    wake_up_interruptible(&otd->read_wait);
+  }
 
   submit_urb(otd);
 }
@@ -510,6 +519,7 @@ static int optical_probe(struct usb_interface *intf,
       break;
     }
     otd->file_private_data = NULL;
+    otd->disconnected = false;
 
     do {
       device_context_init(otd, intf);
@@ -519,6 +529,7 @@ static int optical_probe(struct usb_interface *intf,
       }
       do {
         spin_lock_init(&otd->lock);
+        init_waitqueue_head(&otd->read_wait);
         otd->ongoing_buffer =
             usb_alloc_coherent(otd->usb_device, sizeof(otd->buffer), GFP_ATOMIC,
                                &otd->ongoing_buffer_dma);
@@ -592,11 +603,14 @@ static void optical_disconnect(struct usb_interface *intf) {
     otd->registered = false;
   }
   usb_set_intfdata(intf, NULL);
+  otd->disconnected = true;
   if (otd->file_private_data != NULL) {
     (*otd->file_private_data) = NULL;
   }
   otd->file_private_data = NULL;
   mutex_unlock(&optical_file_lock);
+
+  wake_up_interruptible(&otd->read_wait);
 
   input_unregister_device(otd->input_dev);
   otd->input_dev = NULL;

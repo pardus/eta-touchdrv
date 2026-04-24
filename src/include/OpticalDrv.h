@@ -1,6 +1,7 @@
 #ifndef _OPTICAL_DRV_H_
 #define _OPTICAL_DRV_H_
 
+#include <linux/wait.h>
 #include <linux/workqueue.h>
 
 #pragma pack(1)
@@ -48,6 +49,7 @@ typedef struct _device_context {
   unsigned char pipe_interval;
 
   bool registered;
+  bool disconnected;
 
   struct urb *interrupt_urb;
 
@@ -58,6 +60,8 @@ typedef struct _device_context {
 
   unsigned char buffer_length;
   unsigned char buffer[64];
+
+  wait_queue_head_t read_wait;
 
   device_context_pool pool;
 } device_context;

@@ -89,10 +89,16 @@ static ssize_t optical_read(struct file *filp, char *buffer, size_t count,
     return -EFAULT;
   }
 
+  r = wait_event_interruptible(device->read_wait,
+                               device->buffer_length > 0 || device->disconnected);
+  if (r != 0) {
+    return r;
+  }
+
   spin_lock_irq(&device->lock);
   do {
     if (device->buffer_length <= 0) {
-      r = 0;
+      r = device->disconnected ? -ENODEV : 0;
       break;
     }
     if (count > device->buffer_length) {
@@ -410,6 +416,9 @@ static void on_interrupt(struct urb *interrupt_urb) {
     }
   }
   spin_unlock(&device->lock);
+  if (device->buffer_length > 0) {
+    wake_up_interruptible(&device->read_wait);
+  }
 
   submit_urb(device);
 }
@@ -515,6 +524,7 @@ static int optical_probe(struct usb_interface *intf,
     }
 
     device->file_private_data = NULL;
+    device->disconnected = false;
     do {
       device_context_init(device, intf);
       device->input_dev = input_allocate_device();
@@ -523,6 +533,7 @@ static int optical_probe(struct usb_interface *intf,
       }
       do {
         spin_lock_init(&device->lock);
+        init_waitqueue_head(&device->read_wait);
         device->ongoing_buffer =
             usb_alloc_coherent(device->usb_device, sizeof(device->buffer),
                                GFP_ATOMIC, &device->ongoing_buffer_dma);
@@ -596,11 +607,14 @@ static void optical_disconnect(struct usb_interface *intf) {
     device->registered = false;
   }
   usb_set_intfdata(intf, NULL);
+  device->disconnected = true;
   if (device->file_private_data != NULL) {
     (*device->file_private_data) = NULL;
   }
   device->file_private_data = NULL;
   mutex_unlock(&optical_file_lock);
+
+  wake_up_interruptible(&device->read_wait);
 
   input_unregister_device(device->input_dev);
   device->input_dev = NULL;
