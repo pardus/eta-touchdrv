@@ -529,9 +529,6 @@ static int optical_probe(struct usb_interface *intf,
 
 static void optical_disconnect(struct usb_interface *intf) {
   device_context *otd = usb_get_intfdata(intf);
-  int minor;
-
-  minor = intf->minor;
   otd = usb_get_intfdata(intf);
 
   usb_deregister_dev(intf, &optical_class);
