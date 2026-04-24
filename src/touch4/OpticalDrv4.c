@@ -50,6 +50,7 @@ static void cancel_urb(device_context *device) {
 static ssize_t optical_read(struct file *filp, char *buffer, size_t count,
                             loff_t *ppos) {
   ssize_t r;
+  unsigned char kernel_buffer[64];
   device_context *otd;
 
   otd = filp->private_data;
@@ -66,14 +67,15 @@ static ssize_t optical_read(struct file *filp, char *buffer, size_t count,
     if (count > otd->buffer_length) {
       count = otd->buffer_length;
     }
+    memcpy(kernel_buffer, otd->buffer, count);
     otd->buffer_length = 0;
-    if (copy_to_user(buffer, otd->buffer, count) != 0) {
-      r = -EFAULT;
-      break;
-    }
     r = count;
   } while (false);
   spin_unlock_irq(&otd->lock);
+
+  if (r > 0 && copy_to_user(buffer, kernel_buffer, r) != 0) {
+    return -EFAULT;
+  }
 
   return r;
 }
