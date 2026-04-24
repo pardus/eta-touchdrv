@@ -157,11 +157,14 @@ static long sync_singletouch(device_context *otd, unsigned short length,
   if (r != 0) {
     return 0;
   }
+  input_mt_slot(otd->input_dev, 0);
   if ((value.touchPoint.state & OpticalReportTouchPointStateFlag_IsValid) ==
       0) {
+    /* Report slot as released */
+    input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, false);
+    input_sync(otd->input_dev);
     return sizeof(value);
   }
-  input_mt_slot(otd->input_dev, 0);
   if ((value.touchPoint.state & OpticalReportTouchPointStateFlag_IsTouched) !=
       0) {
     input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, true);
