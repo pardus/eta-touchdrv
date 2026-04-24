@@ -1,4 +1,4 @@
-#include <linux/uaccess.hh>
+#include <linux/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -12,6 +12,7 @@
 #include <linux/string.h>
 #include <linux/usb.h>
 #include <linux/usb/input.h>
+#include <linux/version.h>
 
 #define DEVICE_NODE_FORMAT "OpticalUsbRaw%03d"
 #define OPTICAL_TOUCH_POINT_COUNT 10
