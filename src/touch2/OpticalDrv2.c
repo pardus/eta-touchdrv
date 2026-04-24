@@ -106,7 +106,7 @@ static long set_report(device_context *device, unsigned short length,
   void *kernel_data;
   int r;
 
-  kernel_data = kmalloc(length, GFP_KERNEL);
+  kernel_data = kzalloc(length, GFP_KERNEL);
   if (kernel_data == NULL) {
     return -ENOMEM;
   }
@@ -132,7 +132,7 @@ static long get_report(device_context *device, unsigned short length,
   void *kernel_data;
   int r;
 
-  kernel_data = kmalloc(length, GFP_KERNEL);
+  kernel_data = kzalloc(length, GFP_KERNEL);
   if (kernel_data == NULL) {
     return -ENOMEM;
   }
