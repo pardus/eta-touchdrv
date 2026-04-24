@@ -11,7 +11,10 @@
 #include <asm/uaccess.h>
 #include <linux/input/mt.h>
 
-#include "OtdDrv.h"
+#define DEVICE_NODE_FORMAT    "OpticalUsbRaw%03d"
+#define OPTICAL_TOUCH_POINT_COUNT 10
+
+#include <OpticalDrv.h>
 
 #define DRIVER_NAME     "Optical touch device"
 
@@ -20,7 +23,7 @@
 #define info(format, arg...)                \
     printk(KERN_INFO KBUILD_MODNAME ": " format "\n", ##arg)
 
-#define OTD_MINOR_BASE    0
+#define OPTICAL_MINOR_BASE    0
 
 typedef struct _device_context_pool
 {
@@ -61,13 +64,13 @@ static struct usb_device_id const dev_table[] =
     {}
 };
 
-static struct usb_driver otd_driver;
-static struct file_operations otd_fops;
-static struct usb_driver otd_driver;
-static struct usb_class_driver otd_class = {
+static struct usb_driver optical_driver;
+static struct file_operations optical_fops;
+static struct usb_driver optical_driver;
+static struct usb_class_driver optical_class = {
     .name = DEVICE_NODE_FORMAT,
-    .fops = &otd_fops,
-    .minor_base = OTD_MINOR_BASE,
+    .fops = &optical_fops,
+    .minor_base = OPTICAL_MINOR_BASE,
 };
 
 static void submit_urb(device_context* otd)
@@ -85,7 +88,7 @@ static void cancel_urb(device_context* device)
     usb_kill_urb(device->interrupt_urb);
 }
 
-static ssize_t otd_read(struct file * filp, char * buffer, size_t count, loff_t * ppos)
+static ssize_t optical_read(struct file * filp, char * buffer, size_t count, loff_t * ppos)
 {
     ssize_t r;
     device_context * otd;
@@ -121,7 +124,7 @@ static ssize_t otd_read(struct file * filp, char * buffer, size_t count, loff_t 
     return r;
 }
 
-static ssize_t otd_write(struct file * filp, const char * user_buffer, size_t count, loff_t * ppos)
+static ssize_t optical_write(struct file * filp, const char * user_buffer, size_t count, loff_t * ppos)
 {
     device_context *otd;
 
@@ -199,7 +202,7 @@ static long sync_absolute_mouse(device_context *otd, unsigned short length, void
 }
 static long sync_singletouch(device_context *otd, unsigned short length, void const* data)
 {
-    OtdReportPacketSingleTouch value;
+    OpticalReportPacketSingleTouch value;
     int r;
 
     if (length < sizeof(value))
@@ -211,12 +214,12 @@ static long sync_singletouch(device_context *otd, unsigned short length, void co
     {
         return 0;
     }
-    if ((value.touchPoint.state & OtdReportTouchPointStateFlag_IsValid) == 0)
+    if ((value.touchPoint.state & OpticalReportTouchPointStateFlag_IsValid) == 0)
     {
         return sizeof(value);
     }
     input_mt_slot(otd->input_dev, 0);
-    if ((value.touchPoint.state & OtdReportTouchPointStateFlag_IsTouched) != 0)
+    if ((value.touchPoint.state & OpticalReportTouchPointStateFlag_IsTouched) != 0)
     {
         input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, true);
         input_report_abs(otd->input_dev, ABS_MT_TOUCH_MAJOR, value.touchPoint.width);
@@ -233,7 +236,7 @@ static long sync_singletouch(device_context *otd, unsigned short length, void co
 }
 static long sync_multitouch(device_context *otd, unsigned short length, void const* data)
 {
-    OtdReportPacketMultiTouch value;
+    OpticalReportPacketMultiTouch value;
     int i;
     int r;
 
@@ -254,14 +257,14 @@ static long sync_multitouch(device_context *otd, unsigned short length, void con
          * sending an "Up" event; treating invalid as release prevents stuck
          * touches in the input layer. */
         input_mt_slot(otd->input_dev, i);
-        if ((value.touchPoint[i].state & OtdReportTouchPointStateFlag_IsValid) == 0)
+        if ((value.touchPoint[i].state & OpticalReportTouchPointStateFlag_IsValid) == 0)
         {
             /* Report slot as released */
             input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, false);
             continue;
         }
 
-        if ((value.touchPoint[i].state & OtdReportTouchPointStateFlag_IsTouched) != 0)
+        if ((value.touchPoint[i].state & OpticalReportTouchPointStateFlag_IsTouched) != 0)
         {
             input_mt_report_slot_state(otd->input_dev, MT_TOOL_FINGER, true);
             input_report_abs(otd->input_dev, ABS_MT_TOUCH_MAJOR, value.touchPoint[i].width);
@@ -302,7 +305,7 @@ static long sync_virtualkey(device_context *otd, unsigned short length, void con
     // TODO
     return 0;
 }
-static long otd_unlocked_ioctl(struct file * filp, unsigned int ctl_code, unsigned long ctl_param)
+static long optical_unlocked_ioctl(struct file * filp, unsigned int ctl_code, unsigned long ctl_param)
 {
     device_context *otd;
 
@@ -312,34 +315,34 @@ static long otd_unlocked_ioctl(struct file * filp, unsigned int ctl_code, unsign
         return -EFAULT;
     }
 
-    switch (ctl_code & OTD_IOCTL_CODE_TYPE_MASK)
+    switch (ctl_code & OPTICAL_IOCTL_CODE_TYPE_MASK)
     {
-    case OTD_IOCTL_CODE_TYPE_SET_REPORT:
-        return set_report(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_GET_REPORT:
-        return get_report(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_ABSOLUTEMOUSE:
-        return sync_absolute_mouse(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_SINGLETOUCH:
-        return sync_singletouch(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_MULTITOUCH:
-        return sync_multitouch(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_KEYBOARD:
-        return sync_keyboard(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_DIAGNOSIS:
-        return sync_diagnosis(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_RAWTOUCH:
-        return sync_rawtouch(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_TOUCH:
-        return sync_touch(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
-    case OTD_IOCTL_CODE_TYPE_SYNC_VIRTUALKEY:
-        return sync_virtualkey(otd, ctl_code & OTD_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SET_REPORT:
+        return set_report(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_GET_REPORT:
+        return get_report(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_ABSOLUTEMOUSE:
+        return sync_absolute_mouse(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_SINGLETOUCH:
+        return sync_singletouch(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_MULTITOUCH:
+        return sync_multitouch(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_KEYBOARD:
+        return sync_keyboard(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_DIAGNOSIS:
+        return sync_diagnosis(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_RAWTOUCH:
+        return sync_rawtouch(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_TOUCH:
+        return sync_touch(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
+    case OPTICAL_IOCTL_CODE_TYPE_SYNC_VIRTUALKEY:
+        return sync_virtualkey(otd, ctl_code & OPTICAL_IOCTL_CODE_LENGTH_MASK, (void const*)ctl_param);
 
     }
     return 0;
 }
 
-static int otd_open(struct inode * inode, struct file * filp)
+static int optical_open(struct inode * inode, struct file * filp)
 {
     device_context* otd;
     struct usb_interface* interface;
@@ -347,7 +350,7 @@ static int otd_open(struct inode * inode, struct file * filp)
 
     subminor = iminor(inode);
 
-    interface = usb_find_interface(&otd_driver, subminor);
+    interface = usb_find_interface(&optical_driver, subminor);
 
     if (interface == NULL)
     {
@@ -365,7 +368,7 @@ static int otd_open(struct inode * inode, struct file * filp)
     return 0;
 }
 
-static int otd_release(struct inode * inode, struct file * filp)
+static int optical_release(struct inode * inode, struct file * filp)
 {
     device_context* device;
 
@@ -379,14 +382,14 @@ static int otd_release(struct inode * inode, struct file * filp)
     return 0;
 }
 
-static struct file_operations otd_fops =
+static struct file_operations optical_fops =
 {
     .owner = THIS_MODULE,
-    .read = otd_read,
-    .write = otd_write,
-    .unlocked_ioctl = otd_unlocked_ioctl,
-    .open = otd_open,
-    .release = otd_release,
+    .read = optical_read,
+    .write = optical_write,
+    .unlocked_ioctl = optical_unlocked_ioctl,
+    .open = optical_open,
+    .release = optical_release,
 };
 
 static void on_interrupt(struct urb* interrupt_urb)
@@ -417,7 +420,7 @@ static void on_interrupt(struct urb* interrupt_urb)
     submit_urb(otd);
 }
 
-static int otd_open_device(struct input_dev * input_dev)
+static int optical_open_device(struct input_dev * input_dev)
 {
     device_context* otd;
 
@@ -428,7 +431,7 @@ static int otd_open_device(struct input_dev * input_dev)
     return 0;
 }
 
-static void otd_close_device(struct input_dev * input_dev)
+static void optical_close_device(struct input_dev * input_dev)
 {
     device_context* device;
 
@@ -489,8 +492,8 @@ static void input_dev_init(struct input_dev* obj, device_context_pool* pool, str
     //û����ʵ����;
     //input_set_drvdata(obj, otd);
 
-    obj->open = otd_open_device;
-    obj->close = otd_close_device;
+    obj->open = optical_open_device;
+    obj->close = optical_close_device;
 
     obj->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
     set_bit(BTN_TOUCH, obj->keybit);
@@ -504,10 +507,10 @@ static void input_dev_init(struct input_dev* obj, device_context_pool* pool, str
     input_set_abs_params(obj, ABS_MT_POSITION_Y, 0, 32767, 0, 0);
     input_set_abs_params(obj, ABS_MT_TOUCH_MAJOR, 0, 32767, 0, 0);
     input_set_abs_params(obj, ABS_MT_TOUCH_MINOR, 0, 32767, 0, 0);
-    input_mt_init_slots(obj, OTD_TOUCH_POINT_COUNT, INPUT_MT_DIRECT);
+    input_mt_init_slots(obj, OPTICAL_TOUCH_POINT_COUNT, INPUT_MT_DIRECT);
 }
 
-static int otd_probe(struct usb_interface * intf, const struct usb_device_id *id)
+static int optical_probe(struct usb_interface * intf, const struct usb_device_id *id)
 {
     int retval;
     device_context * otd;
@@ -564,7 +567,7 @@ static int otd_probe(struct usb_interface * intf, const struct usb_device_id *id
                             do
                             {
                                 msleep(500);
-                                if (usb_register_dev(intf, &otd_class) != 0)
+                                if (usb_register_dev(intf, &optical_class) != 0)
                                 {
                                     break;
                                 }
@@ -593,7 +596,7 @@ static int otd_probe(struct usb_interface * intf, const struct usb_device_id *id
     return -ENOMEM;
 }
 
-static void otd_disconnect(struct usb_interface * intf)
+static void optical_disconnect(struct usb_interface * intf)
 {
     device_context* otd = usb_get_intfdata(intf);
     int minor;
@@ -601,7 +604,7 @@ static void otd_disconnect(struct usb_interface * intf)
     minor = intf->minor;
     otd = usb_get_intfdata(intf);
 
-    usb_deregister_dev(intf, &otd_class);
+    usb_deregister_dev(intf, &optical_class);
     usb_set_intfdata(intf, NULL);
     input_unregister_device(otd->input_dev);
     usb_free_urb(otd->interrupt_urb);
@@ -615,16 +618,16 @@ static void otd_disconnect(struct usb_interface * intf)
     kfree(otd);
 }
 
-static struct usb_driver otd_driver =
+static struct usb_driver optical_driver =
 {
     .name = DRIVER_NAME,
-    .probe = otd_probe,
-    .disconnect = otd_disconnect,
+    .probe = optical_probe,
+    .disconnect = optical_disconnect,
     .id_table = dev_table,
 };
 
 
-module_usb_driver(otd_driver);
+module_usb_driver(optical_driver);
 
 MODULE_DESCRIPTION("USB driver for Optical touch screen");
 MODULE_LICENSE("GPL");

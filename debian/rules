@@ -6,14 +6,15 @@ VERSION=$(shell dpkg-parsechangelog --show-field=Version|rev|cut -d- -f2-|rev)
 	dh $@ --with dkms
 
 override_dh_install:
-	dh_install touch2/kernelSrc/Makefile touch2/kernelSrc/OpticalDrv.c touch2/kernelSrc/OpticalDrv.h usr/src/eta-touchdrv-$(VERSION)/touch2/
-	dh_install touch2/opticServer/OpticalService touch2/calibrationTools/calibrationTools usr/bin/
-	chmod 744 debian/eta-touchdrv/usr/bin/OpticalService debian/eta-touchdrv/usr/bin/calibrationTools
-	dh_install touch4/kernel/Makefile touch4/kernel/OtdDrv.c touch4/kernel/OtdDrv.h usr/src/eta-touchdrv-$(VERSION)/touch4/
-	dh_install touch4/otdServer/OtdTouchServer.$(shell uname -m) touch4/calibration/OtdCalibrationTool usr/bin/
-	chmod 744 debian/eta-touchdrv/usr/bin/OtdTouchServer.$(shell uname -m) debian/eta-touchdrv/usr/bin/OtdCalibrationTool
+	dh_install src usr/src/eta-touchdrv-$(VERSION)/
+	dh_install bin/touch2/* usr/bin/touch2/
+	dh_install bin/touch4/* usr/bin/touch4/
 	dh_install touchdrv_launcher usr/bin
+
+override_dh_permissions:
 	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_launcher
+	chmod 744 debian/eta-touchdrv/usr/bin/touch2/*
+	chmod 744 debian/eta-touchdrv/usr/bin/touch4/*
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)

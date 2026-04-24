@@ -1,5 +1,3 @@
-eta-touchdrv source: source-is-missing touch4/otdServer/OtdTouchServer
-eta-touchdrv source: source-is-missing touch4/calibration/OtdCalibrationTool
-eta-touchdrv source: source-is-missing touch2/opticServer/OpticalService
-eta-touchdrv source: source-is-missing touch2/calibrationTools/calibrationTools
+eta-touchdrv source: source-is-missing bin/touch2/*
+eta-touchdrv source: source-is-missing bin/touch4/*
  

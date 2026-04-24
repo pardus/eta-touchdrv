@@ -1,6 +1,4 @@
 eta-touchdrv: init.d-script-not-included-in-package etc/init.d/eta-touchdrv
-eta-touchdrv: binary-without-manpage usr/bin/OpticalService
-eta-touchdrv: binary-without-manpage usr/bin/OtdCalibrationTool
-eta-touchdrv: binary-without-manpage usr/bin/OtdTouchServer
-eta-touchdrv: binary-without-manpage usr/bin/calibrationTools
-eta-touchdrv: binary-without-manpage usr/bin/touchdrv_install
+eta-touchdrv: binary-without-manpage usr/bin/touch2/*
+eta-touchdrv: binary-without-manpage usr/bin/touch4/*
+eta-touchdrv: binary-without-manpage usr/bin/touchdrv_launcher

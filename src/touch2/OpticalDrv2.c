@@ -12,7 +12,10 @@
 #include <linux/input/mt.h>
 #include <linux/version.h>
 
-#include "OpticalDrv.h"
+#define DEVICE_NODE_FORMAT    "IRTouchOptical%03d"
+#define OPTICAL_TOUCH_POINT_COUNT 2
+
+#include <OpticalDrv.h>
 
 #define DRIVER_NAME "IRTOUCH optical"
 

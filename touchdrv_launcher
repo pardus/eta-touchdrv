@@ -3,12 +3,12 @@ set -euo pipefail
 
 TYPE=$1
 
-if [ "$TYPE" = "optical" ]; then
-    modprobe OpticalDrv || true
-    exec /usr/bin/OpticalService
-elif [ "$TYPE" = "otd" ]; then
-    modprobe OtdDrv || true
-    exec /usr/bin/OtdTouchServer.$(uname -m)
+if [ "$TYPE" = "touch2" ]; then
+    modprobe OpticalDrv2 || true
+    exec /usr/bin/touch2/OpticalTouchServer.$(uname -m)
+elif [ "$TYPE" = "touch4" ]; then
+    modprobe OpticalDrv4 || true
+    exec /usr/bin/touch4/OpticalTouchServer.$(uname -m)
 else
     echo "Unknown TYPE: $TYPE, exiting cleanly to prevent loop"
     exit 0

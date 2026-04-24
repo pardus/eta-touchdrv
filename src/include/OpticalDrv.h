@@ -1,9 +1,6 @@
 #ifndef _OPTICAL_DRV_H_
 #define _OPTICAL_DRV_H_
 
-#define DEVICE_NODE_FORMAT    "IRTouchOptical%03d"
-#define OPTICAL_TOUCH_POINT_COUNT 2
-
 #pragma pack(1)
 
 typedef unsigned char OpticalReportTouchPointStateFlag;
