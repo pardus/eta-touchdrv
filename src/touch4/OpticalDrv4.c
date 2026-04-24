@@ -23,6 +23,10 @@
 #define err(format, arg...) pr_err(KBUILD_MODNAME ": " format "\n", ##arg)
 #define info(format, arg...) pr_info(KBUILD_MODNAME ": " format "\n", ##arg)
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0))
+#define strlcpy strscpy
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 #define optical_access_ok(type, ptr, size) access_ok(ptr, size)
 #else
