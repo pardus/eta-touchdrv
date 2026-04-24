@@ -1,6 +1,8 @@
 #ifndef _OPTICAL_DRV_H_
 #define _OPTICAL_DRV_H_
 
+#include <linux/workqueue.h>
+
 #pragma pack(1)
 
 typedef unsigned char OpticalReportTouchPointStateFlag;
@@ -38,10 +40,14 @@ typedef struct _device_context {
   struct usb_device *usb_device;
   struct input_dev *input_dev;
   struct device *device;
+  struct usb_interface *intf;
+  struct delayed_work register_work;
   dev_t dev;
   void **file_private_data;
   int pipe_input;
   unsigned char pipe_interval;
+
+  bool registered;
 
   struct urb *interrupt_urb;
 

@@ -55,6 +55,19 @@ static void cancel_urb(device_context *device) {
   usb_kill_urb(device->interrupt_urb);
 }
 
+static void optical_register_work(struct work_struct *work) {
+  device_context *otd = container_of(to_delayed_work(work), device_context,
+                                     register_work);
+
+  if (usb_register_dev(otd->intf, &optical_class) != 0) {
+    err("%s: usb_register_dev failed", __func__);
+    return;
+  }
+  mutex_lock(&optical_file_lock);
+  otd->registered = true;
+  mutex_unlock(&optical_file_lock);
+}
+
 static ssize_t optical_read(struct file *filp, char *buffer, size_t count,
                             loff_t *ppos) {
   ssize_t r;
@@ -535,15 +548,12 @@ static int optical_probe(struct usb_interface *intf,
             }
             do {
               usb_set_intfdata(intf, otd);
-              do {
-                msleep(500);
-                if (usb_register_dev(intf, &optical_class) != 0) {
-                  break;
-                }
-                return 0;
-
-              } while (false);
-              usb_set_intfdata(intf, NULL);
+              otd->intf = intf;
+              otd->registered = false;
+              INIT_DELAYED_WORK(&otd->register_work, optical_register_work);
+              schedule_delayed_work(&otd->register_work,
+                                    msecs_to_jiffies(500));
+              return 0;
             } while (false);
             // ԭ��û�е���input_unregister_device
             input_unregister_device(otd->input_dev);
@@ -570,8 +580,17 @@ static int optical_probe(struct usb_interface *intf,
 static void optical_disconnect(struct usb_interface *intf) {
   device_context *otd = usb_get_intfdata(intf);
 
+  if (otd == NULL) {
+    return;
+  }
+
+  cancel_delayed_work_sync(&otd->register_work);
+
   mutex_lock(&optical_file_lock);
-  usb_deregister_dev(intf, &optical_class);
+  if (otd->registered) {
+    usb_deregister_dev(intf, &optical_class);
+    otd->registered = false;
+  }
   usb_set_intfdata(intf, NULL);
   if (otd->file_private_data != NULL) {
     (*otd->file_private_data) = NULL;
