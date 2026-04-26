@@ -1,3 +1,15 @@
+eta-touchdrv (0.4.1) stable; urgency=medium
+
+  * Update touch4 binary
+  * Refactor systemd service, fix restart policy
+  * Add clang compile support
+  * Fix kernel compatibility:
+    - resolve race conditions and use-after-free
+    - improve memory handling
+    - fix touch release and probe stability issues
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Sun, 26 Apr 2026 21:54:44 +0300
+
 eta-touchdrv (0.4.0) stable; urgency=medium
 
   * Update touch4 binary
