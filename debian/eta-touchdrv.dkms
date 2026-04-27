@@ -1,4 +1,3 @@
-# MAKE and CLEAN are ugly but should work
 # make -C somehow didn't work.
 PACKAGE_VERSION="__VERSION__"
 PACKAGE_NAME="eta-touchdrv"

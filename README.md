@@ -47,7 +47,7 @@ head of master branch with the pattern `vx.y.z` and merge the tag into
 debian/sid branch. Edit debian/changelog and build debian package. Before a
 release package you might want to build several experimental snatshot packages.
 
-Here is how you could get a snotshot build.
+Here is how you could get a snapshot build.
 
 ```bash
 git checkout master
