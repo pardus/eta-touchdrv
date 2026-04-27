@@ -13,10 +13,7 @@ fi
 
 CLEAN="make KVER=${kernelver} clean"
 MAKE="make CC=${CC} LLVM=${LLVM} KVER=${kernelver}"
-BUILT_MODULE_NAME[0]="OpticalDrv2"
+BUILT_MODULE_NAME[0]="OpticalDrv"
 BUILT_MODULE_LOCATION[0]=""
 DEST_MODULE_LOCATION[0]="/extra"
-BUILT_MODULE_NAME[1]="OpticalDrv4"
-BUILT_MODULE_LOCATION[1]=""
-DEST_MODULE_LOCATION[1]="/extra"
 AUTOINSTALL="yes"

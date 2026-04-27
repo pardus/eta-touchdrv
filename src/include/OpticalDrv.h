@@ -3,6 +3,11 @@
 
 #pragma pack(1)
 
+struct optical_variant {
+  const char *dev_node_fmt;
+  int touch_points;
+};
+
 typedef unsigned char OpticalReportTouchPointStateFlag;
 #define OpticalReportTouchPointStateFlag_None                                  \
   ((OpticalReportTouchPointStateFlag)0x00)
@@ -25,8 +30,7 @@ typedef struct _OpticalReportPacketSingleTouch {
 } OpticalReportPacketSingleTouch;
 
 typedef struct _OpticalReportPacketMultiTouch {
-  OpticalReportTouchPoint touchPoint[OPTICAL_TOUCH_POINT_COUNT];
-  unsigned short scanTime;
+  OpticalReportTouchPoint touchPoint[];
 } OpticalReportPacketMultiTouch;
 
 typedef struct _device_context_pool {
@@ -42,6 +46,9 @@ typedef struct _device_context {
   void **file_private_data;
   int pipe_input;
   unsigned char pipe_interval;
+
+  struct usb_class_driver class;
+  const struct optical_variant *variant;
 
   bool registered;
   bool disconnected;

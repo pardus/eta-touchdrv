@@ -1,15 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-TYPE=$1
+TYPE="${1:-}"
 
-if [ "$TYPE" = "touch2" ]; then
-    modprobe OpticalDrv2 || true
-    exec /usr/bin/touch2/OpticalTouchServer.$(uname -m)
-elif [ "$TYPE" = "touch4" ]; then
-    modprobe OpticalDrv4 || true
-    exec /usr/bin/touch4/OpticalTouchServer.$(uname -m)
-else
+case "$TYPE" in
+  touch2)
+    BIN="/usr/bin/touch2/OpticalTouchServer.$(uname -m)"
+    ;;
+  touch4)
+    BIN="/usr/bin/touch4/OpticalTouchServer.$(uname -m)"
+    ;;
+  *)
     echo "Unknown TYPE: $TYPE, exiting cleanly to prevent loop"
     exit 0
-fi
+    ;;
+esac
+
+[ -x "$BIN" ] || exit 0
+modprobe "OpticalDrv" || true
+exec "$BIN"
