@@ -1,3 +1,0 @@
-misc:Depends=dkms (>= 2.1.0.0)
-shlibs:Depends=libc6 (>= 2.4), libx11-6
-misc:Pre-Depends=

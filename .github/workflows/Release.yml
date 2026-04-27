@@ -12,6 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Stage Debian packaging tree
+        run: |
+          rm -rf debian
+          mkdir -p debian
+          cp -a packaging/debian/. debian/
+          cp packaging/common/eta-touchdrv@.service debian/
+          cp packaging/common/60-eta-touchdrv.rules debian/
+
       - name: Build Debian package
         uses: jtdor/build-deb-action@v1
         env:
@@ -27,6 +35,54 @@ jobs:
         with:
           name: deb-packages
           path: debian/artifacts/
+
+  aur:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    container:
+      image: archlinux:base-devel
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Arch build deps
+        run: pacman -Sy --noconfirm --needed git openssh
+
+      - name: Sync PKGBUILD version to release tag
+        working-directory: packaging/arch
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          sed -i "s/^pkgver=.*/pkgver=${version}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          makepkg --printsrcinfo > .SRCINFO
+
+      - name: Build AUR package
+        working-directory: packaging/arch
+        run: makepkg --asroot --syncdeps --clean --noconfirm
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+
+      - name: Publish to AUR
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          git clone ssh://aur@aur.archlinux.org/eta-touchdrv.git aur-repo
+          cp packaging/arch/PKGBUILD packaging/arch/.SRCINFO aur-repo/
+          cd aur-repo
+          git add PKGBUILD .SRCINFO
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git commit -m "Update eta-touchdrv ${GITHUB_REF_NAME#v}"
+            git push origin master
+          fi
 
   release:
     runs-on: ubuntu-latest
