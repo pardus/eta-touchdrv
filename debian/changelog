@@ -1,3 +1,9 @@
+eta-touchdrv (0.5.1) stable; urgency=medium
+
+  * Fix StartLimitIntervalSec location in service file
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Mon, 08 Jun 2026 12:58:10 +0300
+
 eta-touchdrv (0.5.0) stable; urgency=medium
 
   [ Yusuf Düzgün ]
