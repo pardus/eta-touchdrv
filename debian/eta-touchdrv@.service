@@ -1,10 +1,10 @@
 [Unit]
 Description=ETA Touch Driver Service (%I)
 After=lightdm.service
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/touchdrv_launcher %i
 Restart=on-failure
 RestartSec=2
-StartLimitIntervalSec=0
