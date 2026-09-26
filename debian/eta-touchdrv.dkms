@@ -1,13 +1,12 @@
-# MAKE and CLEAN are ugly but should work
-# make -C somehow didn't work.
 PACKAGE_VERSION="__VERSION__"
 PACKAGE_NAME="eta-touchdrv"
-CLEAN="cd touch2;make KVER=${kernelver} clean;cd ..;cd touch4;make KVER=${kernelver} clean;cd .."
-MAKE="cd touch2;make KVER=${kernelver};cd ..;cd touch4;make KVER=${kernelver};cd .."
+
+if grep -qi "clang" /proc/version 2>/dev/null; then
+    MAKE="make CC=clang LLVM=1 LLVM_IAS=1 KVER=${kernelver}"
+else
+    MAKE="make CC=gcc KVER=${kernelver}"
+fi
 BUILT_MODULE_NAME[0]="OpticalDrv"
-BUILT_MODULE_LOCATION[0]="touch2/"
+BUILT_MODULE_LOCATION[0]=""
 DEST_MODULE_LOCATION[0]="/extra"
-BUILT_MODULE_NAME[1]="OtdDrv"
-BUILT_MODULE_LOCATION[1]="touch4/"
-DEST_MODULE_LOCATION[1]="/extra"
 AUTOINSTALL="yes"

@@ -1,10 +1,10 @@
 #ifndef _OPTICAL_DRV_H_
 #define _OPTICAL_DRV_H_
 
-#define DEVICE_NODE_FORMAT    "IRTouchOptical%03d"
-#define OPTICAL_TOUCH_POINT_COUNT 2
+#define OPTICAL_MAX_TOUCH_POINTS 10
 
-#pragma pack(1)
+#define OPTICAL_MULTITOUCH_PACKET_SIZE(touch_point_count) \
+    ((touch_point_count) * sizeof(OpticalReportTouchPoint) + sizeof(unsigned short))
 
 typedef unsigned char OpticalReportTouchPointStateFlag;
 #define OpticalReportTouchPointStateFlag_None       ((OpticalReportTouchPointStateFlag)0x00)
@@ -19,23 +19,27 @@ typedef struct _OpticalReportTouchPoint
     signed short width;
     signed short height;
 }
-OpticalReportTouchPoint;
+__attribute__((packed)) OpticalReportTouchPoint;
 
 typedef struct _OpticalReportPacketSingleTouch
 {
     OpticalReportTouchPoint touchPoint;
     unsigned short scanTime;
 }
-OpticalReportPacketSingleTouch;
+__attribute__((packed)) OpticalReportPacketSingleTouch;
 
 typedef struct _OpticalReportPacketMultiTouch
 {
-    OpticalReportTouchPoint touchPoint[OPTICAL_TOUCH_POINT_COUNT];
+    OpticalReportTouchPoint touchPoint[OPTICAL_MAX_TOUCH_POINTS];
     unsigned short scanTime;
 }
-OpticalReportPacketMultiTouch;
+__attribute__((packed)) OpticalReportPacketMultiTouch;
 
-#pragma pack()
+struct optical_variant
+{
+    const char *device_node_format;
+    unsigned int touch_point_count;
+};
 
 //control code
 #define OPTICAL_IOCTL_CODE_TYPE_MASK                        0x00ff0000u

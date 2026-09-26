@@ -1,19 +1,43 @@
 #!/usr/bin/make -f
 
 VERSION=$(shell dpkg-parsechangelog --show-field=Version|rev|cut -d- -f2-|rev)
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+ifeq ($(DEB_HOST_ARCH),amd64)
+TOUCH_ARCH := x86_64
+else ifeq ($(DEB_HOST_ARCH),arm64)
+TOUCH_ARCH := aarch64
+endif
+
+TOUCH2_SERVER := $(wildcard bin/touch2/OpticalTouchServer.$(TOUCH_ARCH))
+TOUCH2_CALIBRATION := $(wildcard bin/touch2/OpticalCalibrationTool.$(TOUCH_ARCH))
+TOUCH4_SERVER := $(wildcard bin/touch4/OpticalTouchServer.$(TOUCH_ARCH))
+TOUCH4_CALIBRATION := $(wildcard bin/touch4/OpticalCalibrationTool.$(TOUCH_ARCH))
 
 %:
 	dh $@ --with dkms
 
 override_dh_install:
-	dh_install touch2/kernelSrc/Makefile touch2/kernelSrc/OpticalDrv.c touch2/kernelSrc/OpticalDrv.h usr/src/eta-touchdrv-$(VERSION)/touch2/
-	dh_install touch2/opticServer/OpticalService touch2/calibrationTools/calibrationTools usr/bin/
-	chmod 744 debian/eta-touchdrv/usr/bin/OpticalService debian/eta-touchdrv/usr/bin/calibrationTools
-	dh_install touch4/kernel/Makefile touch4/kernel/OtdDrv.c touch4/kernel/OtdDrv.h usr/src/eta-touchdrv-$(VERSION)/touch4/
-	dh_install touch4/otdServer/OtdTouchServer.$(shell uname -m) touch4/calibration/OtdCalibrationTool usr/bin/
-	chmod 744 debian/eta-touchdrv/usr/bin/OtdTouchServer.$(shell uname -m) debian/eta-touchdrv/usr/bin/OtdCalibrationTool
+	dh_install src/Makefile src/OpticalDrv.c src/include/OpticalDrv.h \
+		usr/src/eta-touchdrv-$(VERSION)/
+ifneq ($(strip $(TOUCH2_SERVER)),)
+	dh_install $(TOUCH2_SERVER) usr/bin/touch2/
+endif
+ifneq ($(strip $(TOUCH2_CALIBRATION)),)
+	dh_install $(TOUCH2_CALIBRATION) usr/bin/touch2/
+endif
+ifneq ($(strip $(TOUCH4_SERVER)),)
+	dh_install $(TOUCH4_SERVER) usr/bin/touch4/
+endif
+ifneq ($(strip $(TOUCH4_CALIBRATION)),)
+	dh_install $(TOUCH4_CALIBRATION) usr/bin/touch4/
+endif
 	dh_install touchdrv_launcher usr/bin
+
+override_dh_fixperms:
+	dh_fixperms
 	chmod 744 debian/eta-touchdrv/usr/bin/touchdrv_launcher
+	if [ -d debian/eta-touchdrv/usr/bin/touch2 ]; then chmod 744 debian/eta-touchdrv/usr/bin/touch2/*; fi
+	if [ -d debian/eta-touchdrv/usr/bin/touch4 ]; then chmod 744 debian/eta-touchdrv/usr/bin/touch4/*; fi
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)
