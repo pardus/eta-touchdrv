@@ -89,6 +89,7 @@ static ssize_t otd_read(struct file * filp, char * buffer, size_t count, loff_t 
 {
     ssize_t r;
     device_context * otd;
+    unsigned char local_buffer[sizeof(otd->buffer)];
 
     otd = filp->private_data;
     if (otd == NULL)
@@ -96,27 +97,26 @@ static ssize_t otd_read(struct file * filp, char * buffer, size_t count, loff_t 
         return -EFAULT;
     }
 
+    /* copy_to_user can sleep, so it must not run under the spinlock */
     spin_lock_irq(&otd->lock);
-    do
+    if (otd->buffer_length <= 0)
     {
-        if (otd->buffer_length <= 0)
-        {
-            r = 0;
-            break;
-        }
-        if (count > otd->buffer_length)
-        {
-            count = otd->buffer_length;
-        }
-        otd->buffer_length = 0;
-        if (copy_to_user(buffer, otd->buffer, count) != 0)
-        {
-            r = -EFAULT;
-            break;
-        }
-        r = count;
-    } while (false);
+        spin_unlock_irq(&otd->lock);
+        return 0;
+    }
+    if (count > otd->buffer_length)
+    {
+        count = otd->buffer_length;
+    }
+    memcpy(local_buffer, otd->buffer, count);
+    otd->buffer_length = 0;
     spin_unlock_irq(&otd->lock);
+
+    if (copy_to_user(buffer, local_buffer, count) != 0)
+    {
+        return -EFAULT;
+    }
+    r = count;
 
     return r;
 }
